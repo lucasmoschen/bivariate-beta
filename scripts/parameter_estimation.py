@@ -7,7 +7,7 @@ This script is a support for the (unpublished) paper "On a bivariate beta"
 from Lucas Machado Moschen and Luiz Max Carvalho. It allows the user to estimate 
 the parameter alpha as explained in the notes. 
 
-This script requires that `numpy` be installed within the Python 
+This script requires that `numpy` and `scipy` be installed within the Python 
 environment you are running. 
 """
 import numpy as np
@@ -90,7 +90,15 @@ class BivariateBeta:
         result = np.array([E_X, E_Y, Var_X, Var_Y, Cor_XY])
         return result
 
-    def system_solver(self, m1, m2, v1, v2, rho):
+    def _system_solution(self, m1, m2, v1, rho):
+        alpha_bar = (m1 - m1*m1)/v1 - 1
+        alpha_4 = rho * alpha_bar * np.sqrt(m1 * m2 * (1 - m1) * (1 - m2)) + (1 - m1) * (1 - m2)
+        alpha_1 = (m1 + m2 - 1) * alpha_bar + alpha_4
+        alpha_2 = (1 - m2) * alpha_bar - alpha_4
+        alpha_3 = (1 - m1) * alpha_bar - alpha_4
+        return np.array([alpha_1, alpha_2, alpha_3, alpha_4])
+
+    def system_solver(self, m1, m2, v1, v2, rho, check_v2=True):
         """
         Solves the system of equations built by the method of moments 
         including both means, one variance and the correlation. If the second variance 
@@ -112,16 +120,12 @@ class BivariateBeta:
             raise Exception("The variances should be in the correct interval.")
         if rho <= -1 or rho >= 1:
             raise Exception("The correlation must be in the open interval (-1,1).")
-        if m1 * (1 - m1) * v2 !=  m2 * (1 - m2) * v1:
-            print("The system has no solution. Excluding the equation regarding v2.")
+        if check_v2:
+            if m1 * (1 - m1) * v2 !=  m2 * (1 - m2) * v1:
+                print("The system has no solution. Excluding the equation regarding v2.")
 
-        alpha_bar = (m1 - m1*m1)/v1 - 1
-        alpha_4 = rho * alpha_bar * np.sqrt(m1 * m2 * (1 - m1) * (1 - m2)) + (1 - m1) * (1 - m2)
-        alpha_1 = (m1 + m2 - 1) * alpha_bar + alpha_4
-        alpha_2 = (1 - m2) * alpha_bar - alpha_4
-        alpha_3 = (1 - m1) * alpha_bar - alpha_4
-        alpha_hat = np.array([alpha_1, alpha_2, alpha_3, alpha_4])
-        if alpha_1 <= 0 or alpha_2 <= 0 or alpha_3 <= 0 or alpha_4 <= 0:
+        alpha_hat = self._system_solution(m1, m2, v1, rho)
+        if sum(alpha_hat <= 0) > 0:
             print("The system has a non-positive solution.")
         return alpha_hat
         
