@@ -10,9 +10,11 @@ the parameter alpha as explained in the notes.
 This script requires that `numpy` and `scipy` be installed within the Python 
 environment you are running. 
 """
+from importlib.metadata import distribution
 import numpy as np
-from scipy.special import gamma
+from scipy.special import gamma, loggamma
 from scipy.integrate import quad
+from scipy.optimize import minimize
 
 class BivariateBeta:
     """
@@ -29,13 +31,13 @@ class BivariateBeta:
         if self.alpha is None: self.alpha = np.ones(4)
         
 
-    def _integral_pdf(self, u, x, y):
+    def _integral_pdf(self, u, x, y, alpha):
         if (u == 0) or (u == x) or (u == y) or (u == x+y-1): 
             return 0
-        fun  = u**(self.alpha[0]-1)
-        fun *= (x-u)**(self.alpha[1]-1)
-        fun *= (y-u)**(self.alpha[2]-1)
-        fun *= (1-x-y+u)**(self.alpha[3]-1)
+        fun  = u**(alpha[0]-1)
+        fun *= (x-u)**(alpha[1]-1)
+        fun *= (y-u)**(alpha[2]-1)
+        fun *= (1-x-y+u)**(alpha[3]-1)
         return fun
 
     def pdf(self, x, y) -> float:
@@ -65,8 +67,38 @@ class BivariateBeta:
         
         lb = max(0,x+y-1)
         ub = min(x,y)
-        result = quad(self._integral_pdf, lb, ub, args = (x,y), epsabs=1e-10, limit=50)[0]
+        result = quad(self._integral_pdf, lb, ub, args = (x, y, self.alpha), epsabs=1e-10, limit=50)[0]
         return result/c
+
+    def log_pdf(self, x, y, alpha = None):
+        """
+        Returns the log pdf value for given x and y, and a parameter alpha pre-specified.
+
+        Parameters:
+        | x (float): a value between 0 and 1
+        | y (float): a value between 0 and 1
+
+        Returns:
+        | result (float): density of bivariate beta distribution at (x,y)
+        """
+        if alpha is None: alpha = self.alpha
+
+        if x <= 0 or x >= 1 or y <= 0 or y >= 1: return -np.inf
+        # convergence problems
+        if alpha[0] + alpha[3] <= 1: 
+            if abs(x + y - 1) <= 1e-7: return -np.inf
+        if alpha[1] + alpha[2] <= 1:
+            if abs(x - y) <= 1e-7: return -np.inf
+        if x <= 1e-7 or y <= 1e-7: return -np.inf
+        if 1-x <= 1e-7 or 1-y <= 1e-7: return -np.inf
+
+        # normalizing constant
+        c = loggamma(alpha).sum() - loggamma(alpha.sum())
+
+        lb = max(0,x+y-1)
+        ub = min(x,y)
+        result = quad(self._integral_pdf, lb, ub, args = (x, y, alpha), epsabs=1e-10, limit=50)[0]
+        return result - c
 
     def moments(self) -> np.array:
         """
@@ -111,7 +143,7 @@ class BivariateBeta:
         | rho (float): sample correlation between the components. 
 
         Returns: 
-        | 
+        | alpha_hat (4-array): estimator of moments.
         """
         # verifications 
         if m1 <= 0 or m1 >= 1 or m2 <= 0 or m2 >= 1:
@@ -128,6 +160,28 @@ class BivariateBeta:
         if sum(alpha_hat <= 0) > 0:
             print("The system has a non-positive solution.")
         return alpha_hat
+
+    def maximum_likelihood_estimator(self, x, y, alpha0):
+        """
+        Maximum likelihood estimator of parameter alpha given the bivariate data (x,y) of size n.
+        Parameters 
+        | x (n-array): data in the first component
+        | y (n-array): data in the second component
+        | alpha0 (4-array): initial guess for the parameters
+
+        Returns: 
+        | alpha_hat: mle
+        """
+        likelihood = lambda logalpha, x, y: sum([self.log_pdf(i, j, np.exp(logalpha)) for (i, j) in zip(x,y)])
+        res = minimize(fun=likelihood, x0=np.log(alpha0), method='CG', args = (x,y))
+        print(res)
+        alpha_hat = res.x
+        return np.exp(alpha_hat)
         
 if __name__ == '__main__':
-    pass
+    
+    U = np.random.dirichlet([1,1,1,1], size=30)
+    X = U[:, 0] + U[:, 1]
+    Y = U[:, 0] + U[:, 2]
+    distribution = BivariateBeta()
+    alpha_hat = distribution.maximum_likelihood_estimator(X, Y, alpha0 = (1,1,1,1))
