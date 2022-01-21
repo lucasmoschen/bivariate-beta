@@ -138,7 +138,7 @@ class BivariateBeta:
     def _system_two_solution(self, m1, m2, alpha3, alpha4):
         alpha1 = ((m1 + m2 - 1) * alpha3 + m2 * alpha4) / (1 - m1)
         alpha2 = ((1 - m2) * alpha3 + (m1 - m2) * alpha4) / (1 - m1)
-        return np.array([alpha1, alpha2, 1, 1])
+        return (alpha1, alpha2)
 
     def system_solver(self, m1, m2, v1, v2, rho, check_v2=True):
         """
@@ -252,13 +252,16 @@ class BivariateBeta:
             alpha_sum = (alpha3 + alpha4) / (1 - m1)
             loss = (v1 - m1*(1-m1)/(alpha_sum + 1))**2 
             loss += (v2 - m2*(1-m2)/(alpha_sum + 1))**2
-            loss += (rho - (alpha1 * alpha4 - alpha2 * alpha3)/(alpha_sum**2 * np.sqrt(m1*m2*(1-m1)*(1-m2))))
+            loss += (rho - (alpha1 * alpha4 - alpha2 * alpha3)/(alpha_sum**2 * np.sqrt(m1*m2*(1-m1)*(1-m2))))**2
             return loss
                 
         result = minimize(fun=func_to_min, bounds=[(0, np.inf)]*2, x0=alpha0, 
-                          constraints=[{'type': 'ineq', 'fun': 1}, 
-                                       {'type': 'ineq', 'fun': 1}])
-
+                         constraints=[{'type': 'ineq', 'fun': lambda x: (m1+m2-1)*x[0] + m2*x[1]}, 
+                                      {'type': 'ineq', 'fun': lambda x: (1-m2)*x[0] + (m1-m2)*x[1]}])
+        alpha_hat = np.ones(4)
+        alpha_hat[2:] = result.x
+        alpha_hat[:2] = self._system_two_solution(m1, m2, alpha_hat[2], alpha_hat[3])
+        return alpha_hat
 
     def maximum_likelihood_estimator(self, x, y, alpha0):
         """
@@ -286,16 +289,15 @@ class BivariateBeta:
         
 if __name__ == '__main__':
 
-    np.random.seed(738912)    
-    U = np.random.dirichlet([0.3,4,3,5], size=1000000)
+    np.random.seed(738912)
+    true_alpha = np.array([0.3,4,3,5])
+    U = np.random.dirichlet(true_alpha, size=1000000)
     X = U[:, 0] + U[:, 1]
     Y = U[:, 0] + U[:, 2]
     distribution = BivariateBeta()
-    #alpha_hat = distribution.maximum_likelihood_estimator(X, Y, alpha0 = (1,1,1,1))
-    alpha_hat = distribution.method_moments_estimator_2(X, Y, accept_zero=True)
+    alpha_hat = distribution.method_moments_estimator_1(X, Y)
     print(alpha_hat)
-
-    dist = BivariateBeta(alpha_hat)
-    dist2 = BivariateBeta([0.3,4,3,5])
-    print(dist.moments())
-    print(dist2.moments())
+    alpha_hat = distribution.method_moments_estimator_2(X, Y)
+    print(alpha_hat)
+    alpha_hat = distribution.method_moments_estimator_3(X, Y, alpha0=(3,5))
+    print(alpha_hat)
