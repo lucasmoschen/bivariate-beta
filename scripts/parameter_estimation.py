@@ -13,7 +13,7 @@ environment you are running.
 import numpy as np
 from scipy.special import gamma, loggamma
 from scipy.integrate import quad
-from scipy.optimize import minimize
+from scipy.optimize import minimize, minimize_scalar
 
 class BivariateBeta:
     """
@@ -120,11 +120,11 @@ class BivariateBeta:
         return result
 
     def _system_solution(self, m1, m2, v1, rho):
-        alpha_bar = (m1 - m1*m1)/v1 - 1
-        alpha_4 = rho * alpha_bar * np.sqrt(m1 * m2 * (1 - m1) * (1 - m2)) + (1 - m1) * (1 - m2)
-        alpha_1 = (m1 + m2 - 1) * alpha_bar + alpha_4
-        alpha_2 = (1 - m2) * alpha_bar - alpha_4
-        alpha_3 = (1 - m1) * alpha_bar - alpha_4
+        alpha_sum = (m1 - m1*m1)/v1 - 1
+        alpha_4 = alpha_sum * (rho * np.sqrt(m1 * m2 * (1 - m1) * (1 - m2)) + (1 - m1) * (1 - m2))
+        alpha_1 = (m1 + m2 - 1) * alpha_sum + alpha_4
+        alpha_2 = (1 - m2) * alpha_sum - alpha_4
+        alpha_3 = (1 - m1) * alpha_sum - alpha_4
         return np.array([alpha_1, alpha_2, alpha_3, alpha_4])
 
     def _system_three_solution(self, m1, m2, rho):
@@ -132,8 +132,13 @@ class BivariateBeta:
         denominator = (1-m1) * (1-m2) + sqrt
         alpha1 = (m1 * m2 + sqrt) / denominator
         alpha2 = (m1 * (1-m2) - sqrt) / denominator
-        alpha3 = (m1 * (1-m1) - sqrt) / denominator
+        alpha3 = (m2 * (1-m1) - sqrt) / denominator
         return np.array([alpha1, alpha2, alpha3, 1])
+
+    def _system_two_solution(self, m1, m2, alpha3, alpha4):
+        alpha1 = ((m1 + m2 - 1) * alpha3 + m2 * alpha4) / (1 - m1)
+        alpha2 = ((1 - m2) * alpha3 + (m1 - m2) * alpha4) / (1 - m1)
+        return np.array([alpha1, alpha2, 1, 1])
 
     def system_solver(self, m1, m2, v1, v2, rho, check_v2=True):
         """
@@ -208,12 +213,52 @@ class BivariateBeta:
         v1 = np.var(x, ddof=1)
         v2 = np.var(y, ddof=1)
         rho = np.corrcoef(x, y)[0,1]
-        alpha_hat = self._system_three_solution(m1, m2, rho)
+        denominator = np.sqrt(m1*m2*(1-m1)*(1-m2))
 
         if not accept_zero:
-            if sum(alpha_hat <= 0) > 0:
+            if rho*denominator < -min(m1*m2, (1-m1)*(1-m2)) or rho*denominator > min(m1, m2) - m1*m2:
                 return np.ones(4) * np.nan
+
+        alpha_hat = self._system_three_solution(m1, m2, rho)
+        alpha_sum = lambda alpha4: alpha4/((1-m1)*(1-m2) + rho*denominator)
+
+        func_to_min = lambda alpha4: (v1 - m1*(1-m1)/(alpha_sum(alpha4) + 1))**2 + (v2 - m2*(1-m2)/(alpha_sum(alpha4) + 1))**2
+        result = minimize_scalar(fun=func_to_min, bounds=(0, np.inf))
+        alpha_hat = alpha_hat * result.x
         return np.maximum(alpha_hat, 0)
+
+    def method_moments_estimator_3(self, x, y, alpha0):
+        """
+        Method of moments estimator of parameter alpha given the bivariate data (x,y) of size n.
+        This method (MM3) solves the system with three euations (m1 and m2) and chooses alpha3 and alpha4 
+        as the value to minimize the quadratic difference to the variances and correlation
+        Parameters
+        | x (n-array): data in the first component
+        | y (n-array): data in the second component
+        | alpha0 (2-array): initial guess for the optimizer (alpha3_0, alpha4_0)
+
+        Returns: 
+        | alpha_hat: estimator
+        """
+        m1 = np.mean(x)
+        m2 = np.mean(y)
+        v1 = np.var(x, ddof=1)
+        v2 = np.var(y, ddof=1)
+        rho = np.corrcoef(x, y)[0,1]
+
+        def func_to_min(alphas):
+            alpha3, alpha4 = tuple(alphas)
+            alpha1, alpha2 = self._system_two_solution(m1, m2, alpha3, alpha4)
+            alpha_sum = (alpha3 + alpha4) / (1 - m1)
+            loss = (v1 - m1*(1-m1)/(alpha_sum + 1))**2 
+            loss += (v2 - m2*(1-m2)/(alpha_sum + 1))**2
+            loss += (rho - (alpha1 * alpha4 - alpha2 * alpha3)/(alpha_sum**2 * np.sqrt(m1*m2*(1-m1)*(1-m2))))
+            return loss
+                
+        result = minimize(fun=func_to_min, bounds=[(0, np.inf)]*2, x0=alpha0, 
+                          constraints=[{'type': 'ineq', 'fun': 1}, 
+                                       {'type': 'ineq', 'fun': 1}])
+
 
     def maximum_likelihood_estimator(self, x, y, alpha0):
         """
@@ -241,10 +286,16 @@ class BivariateBeta:
         
 if __name__ == '__main__':
 
-    np.random.seed(7821)    
-    U = np.random.dirichlet([1,1,1,1], size=1000)
+    np.random.seed(738912)    
+    U = np.random.dirichlet([0.3,4,3,5], size=1000000)
     X = U[:, 0] + U[:, 1]
     Y = U[:, 0] + U[:, 2]
     distribution = BivariateBeta()
-    alpha_hat = distribution.maximum_likelihood_estimator(X, Y, alpha0 = (1,1,1,1))
+    #alpha_hat = distribution.maximum_likelihood_estimator(X, Y, alpha0 = (1,1,1,1))
+    alpha_hat = distribution.method_moments_estimator_2(X, Y, accept_zero=True)
     print(alpha_hat)
+
+    dist = BivariateBeta(alpha_hat)
+    dist2 = BivariateBeta([0.3,4,3,5])
+    print(dist.moments())
+    print(dist2.moments())
