@@ -263,6 +263,46 @@ class BivariateBeta:
         alpha_hat[:2] = self._system_two_solution(m1, m2, alpha_hat[2], alpha_hat[3])
         return alpha_hat
 
+    def method_moments_estimator_4(self, x, y, alpha0):
+        """
+        Method of moments estimator of parameter alpha given the bivariate data (x,y) of size n.
+        This method (MM4) searches the best alpha minimizing the quadratic differences with respect to
+        m1, m2, v1, v2, and rho.
+        Parameters
+        | x (n-array): data in the first component
+        | y (n-array): data in the second component
+        | alpha0 (4-array): initial guess for the optimizer (alpha1_0, alpha2_0, alpha3_0, alpha4_0)
+
+        Returns: 
+        | alpha_hat: estimator
+        """
+        m1 = np.mean(x)
+        m2 = np.mean(y)
+        v1 = np.var(x, ddof=1)
+        v2 = np.var(y, ddof=1)
+        rho = np.corrcoef(x, y)[0,1]
+
+        def func_to_min(alpha, g, c=np.ones(5)):
+            alpha_sum = sum(alpha)
+            div = alpha_sum*alpha_sum*(alpha_sum + 1)     
+            alpha_12 = alpha[0] + alpha[1]
+            alpha_34 = alpha[2] + alpha[3]
+            alpha_13 = alpha[0] + alpha[2]
+            alpha_24 = alpha[1] + alpha[3]
+            loss = c[0]*g(m1, alpha_12/alpha_sum)
+            loss += c[1]*g(m2, alpha_13/alpha_sum)
+            loss += c[2]*g(v1, alpha_12*alpha_34/div)
+            loss += c[3]*g(v2, alpha_13*alpha_24/div)
+            loss += c[4]*g(rho, (alpha[0]*alpha[3] - alpha[1]*alpha[2])/(np.sqrt(alpha_12*alpha_34*alpha_13*alpha_24)))
+                
+        result = minimize(fun=func_to_min, bounds=[(0, np.inf)]*2, x0=alpha0, 
+                         constraints=[{'type': 'ineq', 'fun': lambda x: (m1+m2-1)*x[0] + m2*x[1]}, 
+                                      {'type': 'ineq', 'fun': lambda x: (1-m2)*x[0] + (m1-m2)*x[1]}])
+        alpha_hat = np.ones(4)
+        alpha_hat[2:] = result.x
+        alpha_hat[:2] = self._system_two_solution(m1, m2, alpha_hat[2], alpha_hat[3])
+        return alpha_hat
+
     def maximum_likelihood_estimator(self, x, y, alpha0):
         """
         Maximum likelihood estimator of parameter alpha given the bivariate data (x,y) of size n.
