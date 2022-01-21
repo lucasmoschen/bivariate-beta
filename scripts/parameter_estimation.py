@@ -10,7 +10,6 @@ the parameter alpha as explained in the notes.
 This script requires that `numpy` and `scipy` be installed within the Python 
 environment you are running. 
 """
-from importlib.metadata import distribution
 import numpy as np
 from scipy.special import gamma, loggamma
 from scipy.integrate import quad
@@ -29,7 +28,6 @@ class BivariateBeta:
         """
         self.alpha = np.array(alpha)
         if self.alpha is None: self.alpha = np.ones(4)
-        
 
     def _integral_pdf(self, u, x, y, alpha):
         if (u == 0) or (u == x) or (u == y) or (u == x+y-1): 
@@ -85,20 +83,19 @@ class BivariateBeta:
 
         if x <= 0 or x >= 1 or y <= 0 or y >= 1: return -np.inf
         # convergence problems
-        if alpha[0] + alpha[3] <= 1: 
+        if alpha[0] + alpha[3] <= 1:
             if abs(x + y - 1) <= 1e-7: return -np.inf
         if alpha[1] + alpha[2] <= 1:
             if abs(x - y) <= 1e-7: return -np.inf
         if x <= 1e-7 or y <= 1e-7: return -np.inf
         if 1-x <= 1e-7 or 1-y <= 1e-7: return -np.inf
 
-        # normalizing constant
-        c = loggamma(alpha).sum() - loggamma(alpha.sum())
-
         lb = max(0,x+y-1)
         ub = min(x,y)
-        result = quad(self._integral_pdf, lb, ub, args = (x, y, alpha), epsabs=1e-10, limit=50)[0]
-        return result - c
+        result = quad(self._integral_pdf, lb, ub, args = (x, y, alpha), epsabs=1e-10, limit=100)[0]
+        if result == 0: return -np.inf
+        result = np.log(result)
+        return result
 
     def moments(self) -> np.array:
         """
@@ -129,6 +126,14 @@ class BivariateBeta:
         alpha_2 = (1 - m2) * alpha_bar - alpha_4
         alpha_3 = (1 - m1) * alpha_bar - alpha_4
         return np.array([alpha_1, alpha_2, alpha_3, alpha_4])
+
+    def _system_three_solution(self, m1, m2, rho):
+        sqrt = rho * np.sqrt(m1 * m2 * (1-m1) * (1-m2))
+        denominator = (1-m1) * (1-m2) + sqrt
+        alpha1 = (m1 * m2 + sqrt) / denominator
+        alpha2 = (m1 * (1-m2) - sqrt) / denominator
+        alpha3 = (m1 * (1-m1) - sqrt) / denominator
+        return np.array([alpha1, alpha2, alpha3, 1])
 
     def system_solver(self, m1, m2, v1, v2, rho, check_v2=True):
         """
@@ -161,6 +166,55 @@ class BivariateBeta:
             print("The system has a non-positive solution.")
         return alpha_hat
 
+    def method_moments_estimator_1(self, x, y, accept_zero=True):
+        """
+        Method of moments estimator of parameter alpha given the bivariate data (x,y) of size n.
+        This method (MM1) solves the system and returns 0 whenever the solution is negative.
+        Parameters
+        | x (n-array): data in the first component
+        | y (n-array): data in the second component
+        | accept_zero (boolean): if True, accepts a zero as estimate. If False, the system return 
+                                 nan values for the estimates if one of them is negative.
+
+        Returns: 
+        | alpha_hat: estimator
+        """
+        m1 = np.mean(x)
+        m2 = np.mean(y)
+        v1 = np.var(x, ddof=1)
+        rho = np.corrcoef(x, y)[0,1]
+        alpha_hat = self._system_solution(m1, m2, v1, rho)
+        if not accept_zero:
+            if sum(alpha_hat <= 0) > 0:
+                return np.ones(4) * np.nan
+        return np.maximum(alpha_hat, 0)
+
+    def method_moments_estimator_2(self, x, y, accept_zero=True):
+        """
+        Method of moments estimator of parameter alpha given the bivariate data (x,y) of size n.
+        This method (MM2) solves the system with three euations (m1, m2 and rho) and chooses alpha4 
+        as the value to minimize the quadratic difference to the variances.
+        Parameters
+        | x (n-array): data in the first component
+        | y (n-array): data in the second component
+        | accept_zero (boolean): if True, accepts a zero as estimate. If False, the system return 
+                                 nan values for the estimates if one of them is negative.
+
+        Returns: 
+        | alpha_hat: estimator
+        """
+        m1 = np.mean(x)
+        m2 = np.mean(y)
+        v1 = np.var(x, ddof=1)
+        v2 = np.var(y, ddof=1)
+        rho = np.corrcoef(x, y)[0,1]
+        alpha_hat = self._system_three_solution(m1, m2, rho)
+
+        if not accept_zero:
+            if sum(alpha_hat <= 0) > 0:
+                return np.ones(4) * np.nan
+        return np.maximum(alpha_hat, 0)
+
     def maximum_likelihood_estimator(self, x, y, alpha0):
         """
         Maximum likelihood estimator of parameter alpha given the bivariate data (x,y) of size n.
@@ -172,16 +226,25 @@ class BivariateBeta:
         Returns: 
         | alpha_hat: mle
         """
-        likelihood = lambda logalpha, x, y: sum([self.log_pdf(i, j, np.exp(logalpha)) for (i, j) in zip(x,y)])
-        res = minimize(fun=likelihood, x0=np.log(alpha0), method='CG', args = (x,y))
+        def likelihood(alpha, x, y):
+            log_pdf = sum([self.log_pdf(i, j, alpha) for (i, j) in zip(x,y)])
+            # normalizing constant
+            c = loggamma(alpha).sum() - loggamma(alpha.sum())
+            L_neg = -(log_pdf - len(x) * c)
+            return L_neg
+            
+        res = minimize(fun=likelihood, x0=alpha0, method='L-BFGS-B', args = (x,y), 
+                       bounds=[(1e-5, 100)]*4, options={'eps': 1e-16})
         print(res)
         alpha_hat = res.x
-        return np.exp(alpha_hat)
+        return alpha_hat
         
 if __name__ == '__main__':
-    
-    U = np.random.dirichlet([1,1,1,1], size=30)
+
+    np.random.seed(7821)    
+    U = np.random.dirichlet([1,1,1,1], size=1000)
     X = U[:, 0] + U[:, 1]
     Y = U[:, 0] + U[:, 2]
     distribution = BivariateBeta()
     alpha_hat = distribution.maximum_likelihood_estimator(X, Y, alpha0 = (1,1,1,1))
+    print(alpha_hat)
