@@ -10,10 +10,12 @@ the parameter alpha as explained in the notes.
 This script requires that `numpy` and `scipy` be installed within the Python 
 environment you are running. 
 """
+from dis import dis
 import numpy as np
 from scipy.special import gamma, loggamma
 from scipy.integrate import quad
 from scipy.optimize import minimize, minimize_scalar
+import lintegrate
 
 class BivariateBeta:
     """
@@ -36,6 +38,14 @@ class BivariateBeta:
         fun *= (x-u)**(alpha[1]-1)
         fun *= (y-u)**(alpha[2]-1)
         fun *= (1-x-y+u)**(alpha[3]-1)
+        return fun
+
+    def _log_integral_pdf(self, u, args):
+        x, y, alpha = args
+        fun = (alpha[0]-1)*np.log(u)
+        fun += (alpha[1]-1)*np.log(x-u)
+        fun += (alpha[2]-1)*np.log(y-u)
+        fun += (alpha[3]-1)*np.log(1-x-y+u)
         return fun
 
     def pdf(self, x, y) -> float:
@@ -81,20 +91,22 @@ class BivariateBeta:
         """
         if alpha is None: alpha = self.alpha
 
-        if x <= 0 or x >= 1 or y <= 0 or y >= 1: return -np.inf
+        if x <= 0 or x >= 1 or y <= 0 or y >= 1: return np.inf
         # convergence problems
         if alpha[0] + alpha[3] <= 1:
-            if abs(x + y - 1) <= 1e-7: return -np.inf
+            if abs(x + y - 1) <= 1e-7: return np.inf
         if alpha[1] + alpha[2] <= 1:
-            if abs(x - y) <= 1e-7: return -np.inf
-        if x <= 1e-7 or y <= 1e-7: return -np.inf
-        if 1-x <= 1e-7 or 1-y <= 1e-7: return -np.inf
+            if abs(x - y) <= 1e-7: return np.inf
+        if x <= 1e-7 or y <= 1e-7: return np.inf
+        if 1-x <= 1e-7 or 1-y <= 1e-7: return np.inf
 
-        lb = max(0,x+y-1)
-        ub = min(x,y)
-        result = quad(self._integral_pdf, lb, ub, args = (x, y, alpha), epsabs=1e-10, limit=100)[0]
-        if result == 0: return -np.inf
-        result = np.log(result)
+        lb = max(0,x+y-1) + 1e-6
+        ub = min(x,y) - 1e-6
+
+        # Uses the traditional quad function from scipy
+        #result = np.log(quad(self._integral_pdf, lb, ub, args = (x, y, alpha), epsabs=1e-10, limit=100)[0])
+        # Uses the library lintegrate from mattpitkin
+        result = lintegrate.lqag(self._log_integral_pdf, lb, ub, args=(x,y,alpha))[0]
         return result
 
     def moments(self) -> np.array:
@@ -357,6 +369,14 @@ class BivariateBeta:
         alpha_hat = result.x
         return alpha_hat
 
+    def likelihood(self, alpha, x, y):
+        print(alpha)
+        log_pdf = sum([self.log_pdf(i, j, alpha) for (i, j) in zip(x,y)])
+        # normalizing constant
+        c = loggamma(alpha).sum() - loggamma(alpha.sum())
+        L_neg = -(log_pdf - len(x) * c)
+        return L_neg
+
     def maximum_likelihood_estimator(self, x, y, alpha0):
         """
         Maximum likelihood estimator of parameter alpha given the bivariate data (x,y) of size n.
@@ -367,16 +387,9 @@ class BivariateBeta:
 
         Returns: 
         | alpha_hat: mle
-        """
-        def likelihood(alpha, x, y):
-            log_pdf = sum([self.log_pdf(i, j, alpha) for (i, j) in zip(x,y)])
-            # normalizing constant
-            c = loggamma(alpha).sum() - loggamma(alpha.sum())
-            L_neg = -(log_pdf - len(x) * c)
-            return L_neg
-            
-        res = minimize(fun=likelihood, x0=alpha0, method='L-BFGS-B', args = (x,y), 
-                       bounds=[(1e-5, 100)]*4, options={'eps': 1e-16})
+        """ 
+        res = minimize(fun=self.likelihood, x0=alpha0, method='trust-constr', args = (x,y), 
+                       bounds=[(0.1, 6)]*4, options={'gtol': 1e-16})
         print(res)
         alpha_hat = res.x
         return alpha_hat
@@ -385,7 +398,7 @@ if __name__ == '__main__':
 
     np.random.seed(738912)
     true_alpha = np.array([0.3,4,3,5])
-    U = np.random.dirichlet(true_alpha, size=1000000)
+    U = np.random.dirichlet(true_alpha, size=1000)
     X = U[:, 0] + U[:, 1]
     Y = U[:, 0] + U[:, 2]
     distribution = BivariateBeta()
@@ -396,4 +409,6 @@ if __name__ == '__main__':
     alpha_hat = distribution.method_moments_estimator_3(X, Y, alpha0=(1, 1))
     print(alpha_hat)
     alpha_hat = distribution.method_moments_estimator_4(X, Y, alpha0=(1, 1, 1, 1))
+    print(alpha_hat)
+    alpha_hat = distribution.maximum_likelihood_estimator(X, Y, alpha0=(1, 1, 1, 1))
     print(alpha_hat)
