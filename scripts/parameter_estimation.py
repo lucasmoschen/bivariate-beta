@@ -171,6 +171,57 @@ class BivariateBeta:
             print("The system has a non-positive solution.")
         return alpha_hat
 
+    def loss_function(self, alpha, m1, m2, v1, v2, rho, g, c=np.ones(5)):
+        """
+        Calculates the loss function
+        c[0]*g(m1,E[X1])+c[1]*g(m2,E[X2])+c[2]*g(v1,Var[X1])+c[3]*g(v2,Var[X2])+c[4]*g(rho,Cor(X1,X2))
+        as function of alpha, when the means (m1,m2), variances (v1,v2), and 
+        correlatation is fixed.
+        Parameters:
+        | alpha (4-array): parameter to calculate the loss
+        | m1 (float): sample mean of the first component. 
+        | m2 (float): sample mean of the second component. 
+        | v1 (float): sample variance of the first component. 
+        | v2 (float): sample variance of the second component. 
+        | rho (float): sample correlation between the components. 
+        | g (callable): function that receives to real values and return one. 
+        | c (4-array): weights. Default: [1,1,1,1,1]
+
+        Returns
+        | loss (float) value representing the loss in the choice of this alpha.
+        """
+        alpha_sum = sum(alpha)
+        div = alpha_sum*alpha_sum*(alpha_sum + 1)     
+        alpha_12 = alpha[0] + alpha[1]
+        alpha_34 = alpha[2] + alpha[3]
+        alpha_13 = alpha[0] + alpha[2]
+        alpha_24 = alpha[1] + alpha[3]
+        loss = c[0]*g(m1, alpha_12/alpha_sum)
+        loss += c[1]*g(m2, alpha_13/alpha_sum)
+        loss += c[2]*g(v1, alpha_12*alpha_34/div)
+        loss += c[3]*g(v2, alpha_13*alpha_24/div)
+        loss += c[4]*g(rho, (alpha[0]*alpha[3] - alpha[1]*alpha[2])/(np.sqrt(alpha_12*alpha_34*alpha_13*alpha_24)))
+        return loss
+
+    def _choose_loss_function(self, code='l2'):
+        """
+        There are the following implemented loss functions: 
+        - squared (code='l2') - Default
+        - absolute (code='l1')
+        - relative quadratic (code='rq')
+        - relative absoltute (code='ra')
+        """
+        if code == 'l2':
+            return lambda x,y: (x-y)*(x-y)
+        elif code == 'l1':
+            return lambda x,y: abs(x-y)
+        elif code == 'rq':
+            return lambda x,y: (x-y)*(x-y)/(x*x)
+        elif code == 'ra':
+            return lambda x,y: abs((x-y)/x)
+        else:
+            raise Exception('This loss function is not implemented. Please, implement it and let it as parameter.')
+
     def method_moments_estimator_1(self, x, y, accept_zero=True):
         """
         Method of moments estimator of parameter alpha given the bivariate data (x,y) of size n.
@@ -257,13 +308,15 @@ class BivariateBeta:
                 
         result = minimize(fun=func_to_min, bounds=[(0, np.inf)]*2, x0=alpha0, 
                          constraints=[{'type': 'ineq', 'fun': lambda x: (m1+m2-1)*x[0] + m2*x[1]}, 
-                                      {'type': 'ineq', 'fun': lambda x: (1-m2)*x[0] + (m1-m2)*x[1]}])
+                                      {'type': 'ineq', 'fun': lambda x: (1-m2)*x[0] + (m1-m2)*x[1]}], 
+                         method='trust-constr',
+                         options={'xtol': 1e-10, 'gtol': 1e-10})
         alpha_hat = np.ones(4)
         alpha_hat[2:] = result.x
         alpha_hat[:2] = self._system_two_solution(m1, m2, alpha_hat[2], alpha_hat[3])
         return alpha_hat
 
-    def method_moments_estimator_4(self, x, y, alpha0):
+    def method_moments_estimator_4(self, x, y, alpha0, g=None, c=np.ones(5)):
         """
         Method of moments estimator of parameter alpha given the bivariate data (x,y) of size n.
         This method (MM4) searches the best alpha minimizing the quadratic differences with respect to
@@ -272,6 +325,8 @@ class BivariateBeta:
         | x (n-array): data in the first component
         | y (n-array): data in the second component
         | alpha0 (4-array): initial guess for the optimizer (alpha1_0, alpha2_0, alpha3_0, alpha4_0)
+        | g (callable or str): function that receives to real values and return one.  Default: squared error
+        | c (4-array): weights. Default: [1,1,1,1,1]
 
         Returns: 
         | alpha_hat: estimator
@@ -282,25 +337,24 @@ class BivariateBeta:
         v2 = np.var(y, ddof=1)
         rho = np.corrcoef(x, y)[0,1]
 
-        def func_to_min(alpha, g, c=np.ones(5)):
-            alpha_sum = sum(alpha)
-            div = alpha_sum*alpha_sum*(alpha_sum + 1)     
-            alpha_12 = alpha[0] + alpha[1]
-            alpha_34 = alpha[2] + alpha[3]
-            alpha_13 = alpha[0] + alpha[2]
-            alpha_24 = alpha[1] + alpha[3]
-            loss = c[0]*g(m1, alpha_12/alpha_sum)
-            loss += c[1]*g(m2, alpha_13/alpha_sum)
-            loss += c[2]*g(v1, alpha_12*alpha_34/div)
-            loss += c[3]*g(v2, alpha_13*alpha_24/div)
-            loss += c[4]*g(rho, (alpha[0]*alpha[3] - alpha[1]*alpha[2])/(np.sqrt(alpha_12*alpha_34*alpha_13*alpha_24)))
-                
-        result = minimize(fun=func_to_min, bounds=[(0, np.inf)]*2, x0=alpha0, 
-                         constraints=[{'type': 'ineq', 'fun': lambda x: (m1+m2-1)*x[0] + m2*x[1]}, 
-                                      {'type': 'ineq', 'fun': lambda x: (1-m2)*x[0] + (m1-m2)*x[1]}])
-        alpha_hat = np.ones(4)
-        alpha_hat[2:] = result.x
-        alpha_hat[:2] = self._system_two_solution(m1, m2, alpha_hat[2], alpha_hat[3])
+        if g is None:
+            g = self._choose_loss_function()
+        elif isinstance(g, str):
+            g = self._choose_loss_function(code=g)
+        elif callable(g):
+            pass
+        else:
+            raise Exception('g should be a callable, None or string.')
+
+        result = minimize(fun=self.loss_function, 
+                          x0=alpha0,
+                          args=(m1, m2, v1, v2, rho, g, c),
+                          bounds=[(0, np.inf)]*4,
+                          constraints={'type': 'ineq', 
+                                        'fun': lambda alpha: max(m1*(1-m1)/v1-1, m2*(1-m2)/v2-1) - sum(alpha)},
+                          method='trust-constr',
+                          options={'xtol': 1e-10, 'gtol': 1e-10})
+        alpha_hat = result.x
         return alpha_hat
 
     def maximum_likelihood_estimator(self, x, y, alpha0):
@@ -339,5 +393,7 @@ if __name__ == '__main__':
     print(alpha_hat)
     alpha_hat = distribution.method_moments_estimator_2(X, Y)
     print(alpha_hat)
-    alpha_hat = distribution.method_moments_estimator_3(X, Y, alpha0=(3,5))
+    alpha_hat = distribution.method_moments_estimator_3(X, Y, alpha0=(1, 1))
+    print(alpha_hat)
+    alpha_hat = distribution.method_moments_estimator_4(X, Y, alpha0=(1, 1, 1, 1))
     print(alpha_hat)
