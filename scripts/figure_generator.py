@@ -61,13 +61,13 @@ def plotting_positive_sets(v1_list, rho_list, n_points = 1000):
     distribution = BivariateBeta()
     def z_function(m1, m2, v1, rho):
         return 1*(sum(distribution._system_solution(m1, m2, v1, rho) <= 0) == 0) - 1*(v1 >= m1 - m1*m1)
-    m2 = np.linspace(1/n_points, 1, n_points, endpoint=False)
+    m1 = np.linspace(0, 1, n_points, endpoint=False)
+    m2 = np.linspace(0, 1, n_points, endpoint=False)
 
     fig, ax = plt.subplots(3,5,figsize = (16,7), sharex = True, sharey = True)
     for k, (v1, rho) in enumerate(zip(v1_list, rho_list)): 
         i = k // 5
         j = k % 5
-        m1 = np.linspace(0, 1, n_points, endpoint=False)
         x, y = np.meshgrid(m1,m2)
         data = z_function(x, y, v1, rho)
         ax[i,j].contourf(x, y, data, levels = [-1, -0.1, 0.5, 1], colors = ['grey', '#E08F4C', 'midnightblue'])

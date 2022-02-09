@@ -10,8 +10,8 @@ the parameter alpha as explained in the notes.
 This script requires that `numpy` and `scipy` be installed within the Python 
 environment you are running. 
 """
-from dis import dis
-import numpy as np
+from time import time
+import numpy     as np
 from scipy.special import gamma, loggamma
 from scipy.integrate import quad
 from scipy.optimize import minimize, minimize_scalar
@@ -31,9 +31,10 @@ class BivariateBeta:
         self.alpha = np.array(alpha)
         if self.alpha is None: self.alpha = np.ones(4)
 
-    def _integral_pdf(self, u, x, y, alpha):
-        if (u == 0) or (u == x) or (u == y) or (u == x+y-1): 
-            return 0
+    def _integral_pdf(self, u, x, y, alpha, check = True):
+        if check:
+            if (u == 0) or (u == x) or (u == y) or (u == x+y-1): 
+                return 0
         fun  = u**(alpha[0]-1)
         fun *= (x-u)**(alpha[1]-1)
         fun *= (y-u)**(alpha[2]-1)
@@ -45,7 +46,7 @@ class BivariateBeta:
         fun = (alpha[0]-1)*np.log(u)
         fun += (alpha[1]-1)*np.log(x-u)
         fun += (alpha[2]-1)*np.log(y-u)
-        fun += (alpha[3]-1)*np.log(1-x-y+u)
+        fun += (alpha[3]-1)*np.log1p(-x-y+u)
         return fun
 
     def pdf(self, x, y) -> float:
@@ -78,6 +79,9 @@ class BivariateBeta:
         result = quad(self._integral_pdf, lb, ub, args = (x, y, self.alpha), epsabs=1e-10, limit=50)[0]
         return result/c
 
+    def _alternative_integral_pdf(self, x, y, alpha, lb, ub):
+        return (ub - lb) * np.mean(self._integral_pdf(u, x, y, alpha, False))
+
     def log_pdf(self, x, y, alpha = None):
         """
         Returns the log pdf value for given x and y, and a parameter alpha pre-specified.
@@ -91,22 +95,23 @@ class BivariateBeta:
         """
         if alpha is None: alpha = self.alpha
 
-        if x <= 0 or x >= 1 or y <= 0 or y >= 1: return np.inf
         # convergence problems
         if alpha[0] + alpha[3] <= 1:
-            if abs(x + y - 1) <= 1e-7: return np.inf
+            if abs(x + y - 1) <= 1e-7: return -np.inf
         if alpha[1] + alpha[2] <= 1:
-            if abs(x - y) <= 1e-7: return np.inf
-        if x <= 1e-7 or y <= 1e-7: return np.inf
-        if 1-x <= 1e-7 or 1-y <= 1e-7: return np.inf
+            if abs(x - y) <= 1e-7: return -np.inf
+        if x <= 1e-7 or y <= 1e-7: return -np.inf
+        if 1-x <= 1e-7 or 1-y <= 1e-7: return -np.inf
 
-        lb = max(0,x+y-1) + 1e-6
-        ub = min(x,y) - 1e-6
+        lb = max(0,x+y-1)
+        ub = min(x,y)
 
-        # Uses the traditional quad function from scipy
-        #result = np.log(quad(self._integral_pdf, lb, ub, args = (x, y, alpha), epsabs=1e-10, limit=100)[0])
+        # Uses the traditional quad function from scipyalternativo
+        result = np.log(quad(self._integral_pdf, lb, ub, args = (x, y, alpha), epsabs=1e-10, limit=50)[0])
         # Uses the library lintegrate from mattpitkin
-        result = lintegrate.lqag(self._log_integral_pdf, lb, ub, args=(x,y,alpha))[0]
+        #result = lintegrate.lqag(self._log_integral_pdf, lb, ub, args=(x,y,alpha))[0]
+        # Uses Monte Carlo approximation
+        #result = np.log(self._alternative_integral_pdf(x, y, alpha, lb, ub))
         return result
 
     def moments(self) -> np.array:
@@ -140,6 +145,10 @@ class BivariateBeta:
         return np.array([alpha_1, alpha_2, alpha_3, alpha_4])
 
     def _system_three_solution(self, m1, m2, rho):
+        """
+        This system solves for (alpha1/alpha4, alpha2/alpha4, alpha3/alpha4, 1). After choosing alpha4,
+        you can multiply this vector to alpha4 and obtain alpha.
+        """
         sqrt = rho * np.sqrt(m1 * m2 * (1-m1) * (1-m2))
         denominator = (1-m1) * (1-m2) + sqrt
         alpha1 = (m1 * m2 + sqrt) / denominator
@@ -363,14 +372,13 @@ class BivariateBeta:
                           args=(m1, m2, v1, v2, rho, g, c),
                           bounds=[(0, np.inf)]*4,
                           constraints={'type': 'ineq', 
-                                        'fun': lambda alpha: max(m1*(1-m1)/v1-1, m2*(1-m2)/v2-1) - sum(alpha)},
+                                        'fun': lambda alpha: max(m1*(1-m1)/v1, m2*(1-m2)/v2) - 1 - sum(alpha)},
                           method='trust-constr',
                           options={'xtol': 1e-10, 'gtol': 1e-10})
         alpha_hat = result.x
         return alpha_hat
 
-    def likelihood(self, alpha, x, y):
-        print(alpha)
+    def neg_log_likelihood(self, alpha, x, y):
         log_pdf = sum([self.log_pdf(i, j, alpha) for (i, j) in zip(x,y)])
         # normalizing constant
         c = loggamma(alpha).sum() - loggamma(alpha.sum())
@@ -388,12 +396,38 @@ class BivariateBeta:
         Returns: 
         | alpha_hat: mle
         """ 
-        res = minimize(fun=self.likelihood, x0=alpha0, method='trust-constr', args = (x,y), 
+        res = minimize(fun=self.neg_log_likelihood, x0=alpha0, method='trust-constr', args = (x,y), 
                        bounds=[(0.1, 6)]*4, options={'gtol': 1e-16})
         print(res)
         alpha_hat = res.x
         return alpha_hat
         
+    def bootstrap_method(self, x, y, B, method, seed=1000, alpha0=None):
+        """
+        Bootstrap samples for the estimated parameters alpha. It resamples with replacement 
+        from x and y B times and for each estimate the parameter. 
+        Parameters
+        | x (n-array): data in the first component
+        | y (n-array): data in the second component
+        | B (int): number of bootstrap samples
+        | method (fuction): a function that receives arrays x and y, and returns an alpha. Pass alpha0 if necessary.
+        | seed (int): seed of the random object used in the function.
+
+        Returns
+        | boostrap_sample (4xB-array): estimated parameters for each resample.
+        """
+        ro = np.random.RandomState(seed)
+        X = ro.choice(x, format=(len(x), B))
+        Y = ro.choice(y, format=(len(y), B))
+        bootstrap_sample = np.zeros((4, B))
+        for b in range(B):
+            if alpha0 is None:
+                alpha_hat = method(X[:, b], Y[:, b])
+            else:
+                alpha_hat = method(X[:, b], Y[:, b], alpha0=alpha0)
+            bootstrap_sample[:, b] = alpha_hat
+        return bootstrap_sample
+
 if __name__ == '__main__':
 
     np.random.seed(738912)
@@ -402,13 +436,19 @@ if __name__ == '__main__':
     X = U[:, 0] + U[:, 1]
     Y = U[:, 0] + U[:, 2]
     distribution = BivariateBeta()
-    alpha_hat = distribution.method_moments_estimator_1(X, Y)
-    print(alpha_hat)
-    alpha_hat = distribution.method_moments_estimator_2(X, Y)
-    print(alpha_hat)
-    alpha_hat = distribution.method_moments_estimator_3(X, Y, alpha0=(1, 1))
-    print(alpha_hat)
-    alpha_hat = distribution.method_moments_estimator_4(X, Y, alpha0=(1, 1, 1, 1))
-    print(alpha_hat)
-    alpha_hat = distribution.maximum_likelihood_estimator(X, Y, alpha0=(1, 1, 1, 1))
-    print(alpha_hat)
+    #alpha_hat = distribution.method_moments_estimator_1(X, Y)
+    #print(alpha_hat)
+    #alpha_hat = distribution.method_moments_estimator_2(X, Y)
+    #print(alpha_hat)
+    #alpha_hat = distribution.method_moments_estimator_3(X, Y, alpha0=(1, 1))
+    #print(alpha_hat)
+    #alpha_hat = distribution.method_moments_estimator_4(X, Y, alpha0=(1, 1, 1, 1))
+    #print(alpha_hat)
+    #alpha_hat = distribution.maximum_likelihood_estimator(X, Y, alpha0=(1, 1, 1, 1))
+    #print(alpha_hat)
+
+    alpha = np.array([0.8,1.13,0.9,1.46])
+    t0 = time()
+    log_pdf = sum([distribution.log_pdf(i, j, alpha) for (i, j) in zip(X, Y)])
+    print(log_pdf)
+    print(time() - t0)
