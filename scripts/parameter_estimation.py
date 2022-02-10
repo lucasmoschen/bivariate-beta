@@ -10,6 +10,7 @@ the parameter alpha as explained in the notes.
 This script requires that `numpy` and `scipy` be installed within the Python 
 environment you are running. 
 """
+from random import sample
 from time import time
 import numpy     as np
 from scipy.special import gamma, loggamma
@@ -432,8 +433,8 @@ class BivariateBeta:
         | boostrap_sample (4xB-array): estimated parameters for each resample.
         """
         ro = np.random.RandomState(seed)
-        X = ro.choice(x, format=(len(x), B))
-        Y = ro.choice(y, format=(len(y), B))
+        X = ro.choice(x, size=(len(x), B))
+        Y = ro.choice(y, size=(len(y), B))
         bootstrap_sample = np.zeros((4, B))
         for b in range(B):
             if alpha0 is None:
@@ -443,21 +444,48 @@ class BivariateBeta:
             bootstrap_sample[:, b] = alpha_hat
         return bootstrap_sample
 
-if __name__ == '__main__':
+def experiment_1(true_alpha, sample_size, bootstrap_sample_size, seed):
 
-    np.random.seed(738912)
-    true_alpha = np.array([0.3,4,3,5])
-    U = np.random.dirichlet(true_alpha, size=100)
+    rng = np.random.default_rng(seed)
+    U = rng.dirichlet(true_alpha, size=sample_size)
     X = U[:, 0] + U[:, 1]
     Y = U[:, 0] + U[:, 2]
     distribution = BivariateBeta()
-    #alpha_hat = distribution.method_moments_estimator_1(X, Y)
-    #print(alpha_hat)
-    #alpha_hat = distribution.method_moments_estimator_2(X, Y)
-    #print(alpha_hat)
-    #alpha_hat = distribution.method_moments_estimator_3(X, Y, alpha0=(1, 1))
-    #print(alpha_hat)
-    #alpha_hat = distribution.method_moments_estimator_4(X, Y, alpha0=(1, 1, 1, 1))
-    #print(alpha_hat)
-    #alpha_hat = distribution.maximum_likelihood_estimator(X, Y, alpha0=(1, 1, 1, 1))
-    #print(alpha_hat)
+    alpha_hat1 = distribution.method_moments_estimator_1(X, Y)
+    samples1 = distribution.bootstrap_method(x=X, y=Y, 
+                                             B=bootstrap_sample_size, 
+                                             method=distribution.method_moments_estimator_1, 
+                                             seed=seed)
+    print('done')
+    alpha_hat2 = distribution.method_moments_estimator_2(X, Y)
+    samples2 = distribution.bootstrap_method(x=X, y=Y, 
+                                             B=bootstrap_sample_size, 
+                                             method=distribution.method_moments_estimator_2, 
+                                             seed=seed)
+    print('done')
+    alpha_hat3 = distribution.method_moments_estimator_3(X, Y, alpha0=(1, 1))
+    samples3 = distribution.bootstrap_method(x=X, y=Y, 
+                                             B=bootstrap_sample_size, 
+                                             method=distribution.method_moments_estimator_3, 
+                                             seed=seed,
+                                             alpha0=(1, 1))
+    print('done')
+    alpha_hat4 = distribution.method_moments_estimator_4(X, Y, alpha0=(1, 1, 1, 1))
+    samples4 = distribution.bootstrap_method(x=X, y=Y, 
+                                             B=bootstrap_sample_size, 
+                                             method=distribution.method_moments_estimator_4, 
+                                             seed=seed,
+                                             alpha0=(1, 1, 1, 1))
+    return {'method 1': (alpha_hat1, np.quantile(samples1, axis=1, q=[0.025, 0.975])),
+            'method 2': (alpha_hat2, np.quantile(samples2, axis=1, q=[0.025, 0.975])), 
+            'method 3': (alpha_hat3, np.quantile(samples3, axis=1, q=[0.025, 0.975])), 
+            'method 4': (alpha_hat4, np.quantile(samples4, axis=1, q=[0.025, 0.975])), 
+    }
+
+if __name__ == '__main__':
+
+    result = experiment_1(true_alpha=np.array([1,1,1,1]), 
+                          sample_size=100,
+                          bootstrap_sample_size=50,
+                          seed=38912)
+    print(result)
