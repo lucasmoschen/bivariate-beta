@@ -80,9 +80,18 @@ class BivariateBeta:
         return result/c
 
     def _alternative_integral_pdf(self, x, y, alpha, lb, ub):
+        u = self.uniform*(ub - lb) + lb
         return (ub - lb) * np.mean(self._integral_pdf(u, x, y, alpha, False))
 
-    def log_pdf(self, x, y, alpha = None):
+    def _alternative_integral_pdf_2(self, x, y, alpha, lb, ub):
+        lb, ub = lb/x, ub/x
+        c = quad(func=lambda t, a, b: t**(a-1) * (1-t)**(b-1), 
+                 a=lb, b=ub, args=(alpha[0], alpha[1]))[0]
+        samples = self.beta_samples[(self.beta_samples>=lb)*(self.beta_samples<=ub)]
+        monte_carlo = np.mean((y - x * samples)**(alpha[2]-1) * (1 - x - y + x * samples)**(alpha[3]-1))
+        return c, monte_carlo
+
+    def log_pdf(self, x, y, alpha = None, lb = 0, ub = 1):
         """
         Returns the log pdf value for given x and y, and a parameter alpha pre-specified.
 
@@ -103,15 +112,15 @@ class BivariateBeta:
         if x <= 1e-7 or y <= 1e-7: return -np.inf
         if 1-x <= 1e-7 or 1-y <= 1e-7: return -np.inf
 
-        lb = max(0,x+y-1)
-        ub = min(x,y)
-
         # Uses the traditional quad function from scipyalternativo
         result = np.log(quad(self._integral_pdf, lb, ub, args = (x, y, alpha), epsabs=1e-10, limit=50)[0])
         # Uses the library lintegrate from mattpitkin
         #result = lintegrate.lqag(self._log_integral_pdf, lb, ub, args=(x,y,alpha))[0]
-        # Uses Monte Carlo approximation
+        # Uses Monte Carlo approximation with uniform draws
         #result = np.log(self._alternative_integral_pdf(x, y, alpha, lb, ub))
+        # Uses Monte Carlo approximation with beta draws
+        #result = self._alternative_integral_pdf_2(x, y, alpha, lb, ub)
+        #result = np.log(result[0]) + (alpha[0]+alpha[1]-1)*np.log(x) + np.log(result[1])
         return result
 
     def moments(self) -> np.array:
@@ -378,8 +387,10 @@ class BivariateBeta:
         alpha_hat = result.x
         return alpha_hat
 
-    def neg_log_likelihood(self, alpha, x, y):
-        log_pdf = sum([self.log_pdf(i, j, alpha) for (i, j) in zip(x,y)])
+    def neg_log_likelihood(self, alpha, x, y, lb, ub):
+        #self.beta_samples = np.random.beta(a=alpha[0], b=alpha[1], size=10000)
+        print(alpha)
+        log_pdf = sum([self.log_pdf(x_i, y_i, alpha, lb_i, ub_i) for (x_i, y_i, lb_i, ub_i) in zip(x,y,lb,ub)])
         # normalizing constant
         c = loggamma(alpha).sum() - loggamma(alpha.sum())
         L_neg = -(log_pdf - len(x) * c)
@@ -396,7 +407,11 @@ class BivariateBeta:
         Returns: 
         | alpha_hat: mle
         """ 
-        res = minimize(fun=self.neg_log_likelihood, x0=alpha0, method='trust-constr', args = (x,y), 
+        #self.uniform = np.random.uniform(size=10000)
+        lower_bounds = np.maximum(0, x+y-1)
+        upper_bounds = np.minimum(x, y)
+        res = minimize(fun=self.neg_log_likelihood, x0=alpha0, method='trust-constr', 
+                       args = (x, y, lower_bounds, upper_bounds), 
                        bounds=[(0.1, 6)]*4, options={'gtol': 1e-16})
         print(res)
         alpha_hat = res.x
@@ -432,7 +447,7 @@ if __name__ == '__main__':
 
     np.random.seed(738912)
     true_alpha = np.array([0.3,4,3,5])
-    U = np.random.dirichlet(true_alpha, size=1000)
+    U = np.random.dirichlet(true_alpha, size=100)
     X = U[:, 0] + U[:, 1]
     Y = U[:, 0] + U[:, 2]
     distribution = BivariateBeta()
@@ -446,9 +461,3 @@ if __name__ == '__main__':
     #print(alpha_hat)
     #alpha_hat = distribution.maximum_likelihood_estimator(X, Y, alpha0=(1, 1, 1, 1))
     #print(alpha_hat)
-
-    alpha = np.array([0.8,1.13,0.9,1.46])
-    t0 = time()
-    log_pdf = sum([distribution.log_pdf(i, j, alpha) for (i, j) in zip(X, Y)])
-    print(log_pdf)
-    print(time() - t0)
