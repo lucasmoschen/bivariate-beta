@@ -469,7 +469,7 @@ def confidence_interval_calculus(level, samples):
     ci = np.quantile(samples, q=[(1-level)/2, (1+level)/2])
     return ci
 
-def experiment_moments(true_alpha, sample_size, monte_carlo_simulations, bootstrap_sample_size, seed):
+def experiment_bivbeta(true_alpha, sample_size, monte_carlo_simulations, bootstrap_sample_size, seed):
 
     bias = np.zeros(4)
     mse = np.zeros(4)
@@ -486,7 +486,7 @@ def experiment_moments(true_alpha, sample_size, monte_carlo_simulations, bootstr
         t0 = time()
         alpha_hat1 = distribution.method_moments_estimator_1(X, Y)
         time1 = time() - t0
-        t0
+        t0 = time()
         alpha_hat2 = distribution.method_moments_estimator_2(X, Y)
         time2 = time() - t0
         t0 = time()
@@ -542,6 +542,42 @@ def experiment_moments(true_alpha, sample_size, monte_carlo_simulations, bootstr
 
     return bias, mse, comp, coverage
 
+def moments_logit_normal(mu, sigma):
+
+    Z = np.random.normal(mu, sigma, size=1000000)
+    X = 1/(1 + np.exp(-Z))
+    return np.array([X[:,0].mean(), X[:,1].mean(), X[:,0].var(), X[:,1].var(), np.corrcoef(X[:,0], X[:,1])[0,1]])
+
+def experiment_logitnormal(mu, sigma, sample_size, monte_carlo_simulations, bootstrap_sample_size, seed):
+
+    true_moments = moments_logit_normal(mu, sigma)
+    bias = np.zeros(4)
+    mse = np.zeros(4)
+
+    rng = np.random.default_rng(seed)
+    distribution = BivariateBeta()
+
+    for exp in tqdm(range(monte_carlo_simulations)):
+        Z = rng.multivariate_normal(mu, sigma, size=sample_size)
+        X = 1/(1 + np.exp(-Z[:,0]))
+        Y = 1/(1 + np.exp(-Z[:,1]))
+    
+        alpha_hat1 = distribution.method_moments_estimator_1(X, Y)
+        alpha_hat2 = distribution.method_moments_estimator_2(X, Y)
+        alpha_hat3 = distribution.method_moments_estimator_3(X, Y, alpha0=(1, 1))
+        alpha_hat4 = distribution.method_moments_estimator_4(X, Y, alpha0=(1, 1, 1, 1))
+        alpha =  np.array([alpha_hat1, alpha_hat2, alpha_hat3, alpha_hat4])
+
+        estimated_bivbeta = BivariateBeta(alpha=alpha)
+        estimated_moments = estimated_bivbeta.moments()
+
+        bias_new = true_moments - estimated_moments
+        mse_new = bias_new * bias_new
+        bias = (bias * exp + bias_new)/(exp+1)
+        mse = (mse * exp + mse_new)/(mse+1)
+
+    return bias, mse
+
 if __name__ == '__main__':
 
     true_alpha = np.array([1,1,1,1])
@@ -549,5 +585,5 @@ if __name__ == '__main__':
     monte_carlo_simulations = 10000
     B = 500
     seed = 8392
-    bias, mse, comp, coverage = experiment_moments(true_alpha, sample_size, monte_carlo_simulations, B, seed)
+    bias, mse, comp, coverage = experiment_bivbeta(true_alpha, sample_size, monte_carlo_simulations, B, seed)
     print(bias, mse, comp, coverage)
