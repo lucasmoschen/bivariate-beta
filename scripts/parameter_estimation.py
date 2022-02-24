@@ -10,9 +10,9 @@ the parameter alpha as explained in the notes.
 This script requires that `numpy` and `scipy` be installed within the Python 
 environment you are running. 
 """
-from random import sample
 from time import time
-import numpy     as np
+from tqdm import tqdm
+import numpy as np
 from scipy.special import gamma, loggamma
 from scipy.integrate import quad
 from scipy.optimize import minimize, minimize_scalar
@@ -418,6 +418,18 @@ class BivariateBeta:
         alpha_hat = res.x
         return alpha_hat
         
+    def modified_maximum_likelihood_estimator(self, x, y, alpha0):
+        """
+        Modified likelihood estimator of parameter alpha given the bivariate data (x,y) of size n.
+        Parameters
+        | x (n-array): data in the first component
+        | y (n-array): data in the second component
+        | 
+
+        Returns
+        | alpha_hat: mle
+        """
+
     def bootstrap_method(self, x, y, B, method, seed=1000, alpha0=None):
         """
         Bootstrap samples for the estimated parameters alpha. It resamples with replacement 
@@ -426,7 +438,7 @@ class BivariateBeta:
         | x (n-array): data in the first component
         | y (n-array): data in the second component
         | B (int): number of bootstrap samples
-        | method (fuction): a function that receives arrays x and y, and returns an alpha. Pass alpha0 if necessary.
+        | method (fuction): a function that receives arrays x        | and y, and returns an alpha. Pass alpha0 if necessary.
         | seed (int): seed of the random object used in the function.
 
         Returns
@@ -444,48 +456,98 @@ class BivariateBeta:
             bootstrap_sample[:, b] = alpha_hat
         return bootstrap_sample
 
-def experiment_1(true_alpha, sample_size, bootstrap_sample_size, seed):
+def confidence_interval_calculus(level, samples):
+    """
+    Calculate the percentile interval of level 'level' (for instance level .95).
+    Parameters
+    | level (float): number between 0 and 1
+    | samples (n-array): the array to calculate the percentiles
+
+    Returns
+    | ci (2-array): array with the confidemce interval 
+    """
+    ci = np.quantile(samples, q=[(1-level)/2, (1+level)/2])
+    return ci
+
+def experiment_moments(true_alpha, sample_size, monte_carlo_simulations, bootstrap_sample_size, seed):
+
+    bias = np.zeros(4)
+    mse = np.zeros(4)
+    comp = np.zeros(4)
+    coverage = np.zeros(4)
 
     rng = np.random.default_rng(seed)
-    U = rng.dirichlet(true_alpha, size=sample_size)
-    X = U[:, 0] + U[:, 1]
-    Y = U[:, 0] + U[:, 2]
     distribution = BivariateBeta()
-    alpha_hat1 = distribution.method_moments_estimator_1(X, Y)
-    samples1 = distribution.bootstrap_method(x=X, y=Y, 
-                                             B=bootstrap_sample_size, 
-                                             method=distribution.method_moments_estimator_1, 
-                                             seed=seed)
-    print('done')
-    alpha_hat2 = distribution.method_moments_estimator_2(X, Y)
-    samples2 = distribution.bootstrap_method(x=X, y=Y, 
-                                             B=bootstrap_sample_size, 
-                                             method=distribution.method_moments_estimator_2, 
-                                             seed=seed)
-    print('done')
-    alpha_hat3 = distribution.method_moments_estimator_3(X, Y, alpha0=(1, 1))
-    samples3 = distribution.bootstrap_method(x=X, y=Y, 
-                                             B=bootstrap_sample_size, 
-                                             method=distribution.method_moments_estimator_3, 
-                                             seed=seed,
-                                             alpha0=(1, 1))
-    print('done')
-    alpha_hat4 = distribution.method_moments_estimator_4(X, Y, alpha0=(1, 1, 1, 1))
-    samples4 = distribution.bootstrap_method(x=X, y=Y, 
-                                             B=bootstrap_sample_size, 
-                                             method=distribution.method_moments_estimator_4, 
-                                             seed=seed,
-                                             alpha0=(1, 1, 1, 1))
-    return {'method 1': (alpha_hat1, np.quantile(samples1, axis=1, q=[0.025, 0.975])),
-            'method 2': (alpha_hat2, np.quantile(samples2, axis=1, q=[0.025, 0.975])), 
-            'method 3': (alpha_hat3, np.quantile(samples3, axis=1, q=[0.025, 0.975])), 
-            'method 4': (alpha_hat4, np.quantile(samples4, axis=1, q=[0.025, 0.975])), 
-    }
+    for exp in tqdm(range(monte_carlo_simulations)):
+        U = rng.dirichlet(true_alpha, size=sample_size)
+        X = U[:, 0] + U[:, 1]
+        Y = U[:, 0] + U[:, 2]
+    
+        t0 = time()
+        alpha_hat1 = distribution.method_moments_estimator_1(X, Y)
+        time1 = time() - t0
+        t0
+        alpha_hat2 = distribution.method_moments_estimator_2(X, Y)
+        time2 = time() - t0
+        t0 = time()
+        alpha_hat3 = distribution.method_moments_estimator_3(X, Y, alpha0=(1, 1))
+        time3 = time() - t0
+        t0 = time()
+        alpha_hat4 = distribution.method_moments_estimator_4(X, Y, alpha0=(1, 1, 1, 1))
+        time4 = time() - t0
+        alpha =  np.array([alpha_hat1, alpha_hat2, alpha_hat3, alpha_hat4])
+
+        bias_new = true_alpha - alpha
+        mse_new = (true_alpha - alpha) * (true_alpha - alpha)
+        comp_new = np.array([time1, time2, time3, time4])
+
+        bias = (bias * exp + bias_new)/(exp+1)
+        mse = (mse * exp + mse_new)/(mse+1)
+        comp = (comp * exp + comp_new)/(exp+1)
+
+        nb = 0
+        if exp < nb:
+
+            samples1 = distribution.bootstrap_method(x=X, y=Y, 
+                                                     B=bootstrap_sample_size, 
+                                                     method=distribution.method_moments_estimator_1, 
+                                                     seed=rng.integers(731032178))
+            ci1 = confidence_interval_calculus(level=0.95, samples=samples1)
+            samples2 = distribution.bootstrap_method(x=X, y=Y, 
+                                                     B=bootstrap_sample_size, 
+                                                     method=distribution.method_moments_estimator_2, 
+                                                     seed=rng.integers(731032178))
+            ci2 = confidence_interval_calculus(level=0.95, samples=samples2)
+            samples3 = distribution.bootstrap_method(x=X, y=Y, 
+                                                     B=bootstrap_sample_size, 
+                                                     method=distribution.method_moments_estimator_3, 
+                                                     seed=rng.integers(731032178),
+                                                     alpha0=(1,1))
+            ci3 = confidence_interval_calculus(level=0.95, samples=samples3)
+            samples4 = distribution.bootstrap_method(x=X, y=Y, 
+                                                     B=bootstrap_sample_size, 
+                                                     method=distribution.method_moments_estimator_4, 
+                                                     seed=rng.integers(731032178),
+                                                     alpha0=(1,1,1,1))
+            ci4 = confidence_interval_calculus(level=0.95, samples=samples4)
+
+            if ci1[0] < true_alpha[0] and ci1[1] > true_alpha[0]:
+                coverage[0] += 1/nb
+            if ci2[0] < true_alpha[1] and ci2[1] > true_alpha[1]:
+                coverage[1] += 1/nb
+            if ci3[0] < true_alpha[2] and ci3[1] > true_alpha[2]:
+                coverage[2] += 1/nb
+            if ci4[0] < true_alpha[3] and ci4[1] > true_alpha[3]:
+                coverage[3] += 1/nb
+
+    return bias, mse, comp, coverage
 
 if __name__ == '__main__':
 
-    result = experiment_1(true_alpha=np.array([1,1,1,1]), 
-                          sample_size=100,
-                          bootstrap_sample_size=50,
-                          seed=38912)
-    print(result)
+    true_alpha = np.array([1,1,1,1])
+    sample_size = 50
+    monte_carlo_simulations = 10000
+    B = 500
+    seed = 8392
+    bias, mse, comp, coverage = experiment_moments(true_alpha, sample_size, monte_carlo_simulations, B, seed)
+    print(bias, mse, comp, coverage)
