@@ -13,7 +13,7 @@ environment you are running.
 from time import time
 from tqdm import tqdm
 import numpy as np
-from scipy.special import gamma, loggamma
+from scipy.special import gamma, loggamma, digamma
 from scipy.integrate import quad
 from scipy.optimize import minimize, minimize_scalar
 import lintegrate
@@ -429,6 +429,19 @@ class BivariateBeta:
         Returns
         | alpha_hat: mle
         """
+        # TO BE FINISHED
+        rho = np.corrcoef(x, y)[0,1]
+
+        def system_equations(a, b, c, x, y):
+            n = len(x)
+            dc = digamma(c)
+            fun1 = np.log(x).sum() + n * (dc - digamma(a)) 
+            fun2 = np.log1p(-x).sum() + n * (dc - digamma(c-a))
+            fun3 = np.log(y).sum() + n * (dc - digamma(b))
+            fun4 = np.log1p(-y).sum() + n * (dc - digamma(c-b))
+            return np.array([fun1, fun2, fun3, fun4])
+
+        alpha4_hat = (rho * np.sqrt(a*b*(c-a)*(c-b)) + (c-a)*(c-b))/c
 
     def bootstrap_method(self, x, y, B, method, seed=1000, alpha0=None):
         """
