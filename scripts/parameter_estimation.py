@@ -15,7 +15,7 @@ from tqdm import tqdm
 import numpy as np
 from scipy.special import gamma, loggamma, digamma
 from scipy.integrate import quad
-from scipy.optimize import minimize, minimize_scalar
+from scipy.optimize import minimize, minimize_scalar, root
 import lintegrate
 
 class BivariateBeta:
@@ -418,21 +418,21 @@ class BivariateBeta:
         alpha_hat = res.x
         return alpha_hat
         
-    def modified_maximum_likelihood_estimator(self, x, y, alpha0):
+    def modified_maximum_likelihood_estimator(self, x, y, x0):
         """
         Modified likelihood estimator of parameter alpha given the bivariate data (x,y) of size n.
         Parameters
         | x (n-array): data in the first component
         | y (n-array): data in the second component
-        | 
+        | x0 (3-array): initial guess to the root finder program
 
         Returns
         | alpha_hat: mle
         """
-        # TO BE FINISHED
         rho = np.corrcoef(x, y)[0,1]
 
-        def system_equations(a, b, c, x, y):
+        def system_equations(parameters, x, y):
+            a, b, c = tuple(parameters)
             n = len(x)
             dc = digamma(c)
             fun1 = np.log(x).sum() + n * (dc - digamma(a)) 
@@ -441,7 +441,16 @@ class BivariateBeta:
             fun4 = np.log1p(-y).sum() + n * (dc - digamma(c-b))
             return np.array([fun1, fun2, fun3, fun4])
 
+        sol = root(fun=system_equations, x0=x0, args=(x,y), method='lm')
+        a, b, c = tuple(sol.x)
+
         alpha4_hat = (rho * np.sqrt(a*b*(c-a)*(c-b)) + (c-a)*(c-b))/c
+        alpha4_hat = max(0, min(alpha4_hat, c - max(a,b)))
+        alpha1_hat = max(0, a + b - c + alpha4_hat)
+        alpha2_hat = c - b - alpha4_hat
+        alpha3_hat = c - a - alpha4_hat
+        alpha_hat = np.array([alpha1_hat, alpha2_hat, alpha3_hat, alpha4_hat])
+        return alpha_hat
 
     def bootstrap_method(self, x, y, B, method, seed=1000, alpha0=None):
         """
@@ -594,9 +603,19 @@ def experiment_logitnormal(mu, sigma, sample_size, monte_carlo_simulations, boot
 if __name__ == '__main__':
 
     true_alpha = np.array([1,1,1,1])
-    sample_size = 50
-    monte_carlo_simulations = 10000
-    B = 500
-    seed = 8392
-    bias, mse, comp, coverage = experiment_bivbeta(true_alpha, sample_size, monte_carlo_simulations, B, seed)
-    print(bias, mse, comp, coverage)
+    sample_size = 1000
+    #monte_carlo_simulations = 10000
+    #B = 500
+    #seed = 8392
+    #bias, mse, comp, coverage = experiment_bivbeta(true_alpha, sample_size, monte_carlo_simulations, B, seed)
+    #print(bias, mse, comp, coverage)
+
+    U = np.random.dirichlet(true_alpha, size=sample_size)
+    X = U[:, 0] + U[:, 1]
+    Y = U[:, 0] + U[:, 2]
+    distribution = BivariateBeta()
+    alpha_hat = distribution.modified_maximum_likelihood_estimator(X, Y, x0=(2,2,4))
+    print(alpha_hat)
+    alpha_hat = distribution.method_moments_estimator_2(X, Y)
+    print(alpha_hat)
+
