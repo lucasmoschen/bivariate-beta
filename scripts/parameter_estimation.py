@@ -14,7 +14,8 @@ import numpy as np
 from scipy.special import gamma, loggamma, digamma
 from scipy.integrate import quad
 from scipy.optimize import minimize, minimize_scalar, root
-import lintegrate
+#import lintegrate
+import time
 
 class BivariateBeta:
     """
@@ -328,18 +329,30 @@ class BivariateBeta:
 
         def func_to_min(alphas):
             alpha3, alpha4 = tuple(alphas)
-            alpha1, alpha2 = self._system_two_solution(m1, m2, alpha3, alpha4)
             alpha_sum = (alpha3 + alpha4) / (1 - m1)
             loss = (v1 - m1*(1-m1)/(alpha_sum + 1))**2 
             loss += (v2 - m2*(1-m2)/(alpha_sum + 1))**2
-            loss += (rho - (alpha1 * alpha4 - alpha2 * alpha3)/(alpha_sum**2 * np.sqrt(m1*m2*(1-m1)*(1-m2))))**2
+            #loss += (rho - (alpha1 * alpha4 - alpha2 * alpha3)/(alpha_sum**2 * np.sqrt(m1*m2*(1-m1)*(1-m2))))**2
+            loss += (rho - (m2 - alpha3/(alpha3+alpha4)) * (1-m1) / np.sqrt(m1*m2*(1-m1)*(1-m2)))**2
             return loss
-                
-        result = minimize(fun=func_to_min, bounds=[(0, np.inf)]*2, x0=alpha0, 
+        
+        def derivative(alphas):
+            alpha3, alpha4 = tuple(alphas)
+            alpha_sum = (alpha3 + alpha4) / (1 - m1)
+            grad_alpha3 = (v1 - m1*(1-m1)/(alpha_sum + 1)) * m1 / (alpha_sum+1)**2
+            grad_alpha3 += (v2 - m2*(1-m2)/(alpha_sum + 1)) * m2 * (1 - m2) / (1 - m1) / (alpha_sum+1)**2
+            grad_alpha4 = grad_alpha3
+            c = (1-m1) / np.sqrt(m1*m2*(1-m1)*(1-m2))
+            grad_alpha3 += (rho - c * (m2 - alpha3/(alpha3+alpha4))) * c * alpha4 / (alpha3+alpha4) ** 2
+            grad_alpha4 += (rho - c * (m2 - alpha3/(alpha3+alpha4))) * (-c) * alpha3 / (alpha3+alpha4) ** 2
+            return 2 * np.array([grad_alpha3, grad_alpha4])
+            
+        result = minimize(fun=func_to_min, bounds=[(0, np.inf)]*2, x0=alpha0,
                          constraints=[{'type': 'ineq', 'fun': lambda x: (m1+m2-1)*x[0] + m2*x[1]}, 
-                                      {'type': 'ineq', 'fun': lambda x: (1-m2)*x[0] + (m1-m2)*x[1]}], 
-                         method='trust-constr',
-                         options={'xtol': 1e-10, 'gtol': 1e-10})
+                                      {'type': 'ineq', 'fun': lambda x: (1-m2)*x[0] + (m1-m2)*x[1]}],
+                         jac=derivative,
+                         method='SLSQP',
+                         options={'ftol': 1e-10})
         alpha_hat = np.ones(4)
         alpha_hat[2:] = result.x
         alpha_hat[:2] = self._system_two_solution(m1, m2, alpha_hat[2], alpha_hat[3])
@@ -381,14 +394,13 @@ class BivariateBeta:
                           bounds=[(0, np.inf)]*4,
                           constraints={'type': 'ineq', 
                                         'fun': lambda alpha: max(m1*(1-m1)/v1, m2*(1-m2)/v2) - 1 - sum(alpha)},
-                          method='trust-constr',
-                          options={'xtol': 1e-10, 'gtol': 1e-10})
+                          method='SLSQP',
+                          options={'ftol': 1e-10})
         alpha_hat = result.x
         return alpha_hat
 
     def neg_log_likelihood(self, alpha, x, y, lb, ub):
         #self.beta_samples = np.random.beta(a=alpha[0], b=alpha[1], size=10000)
-        print(alpha)
         log_pdf = sum([self.log_pdf(x_i, y_i, alpha, lb_i, ub_i) for (x_i, y_i, lb_i, ub_i) in zip(x,y,lb,ub)])
         # normalizing constant
         c = loggamma(alpha).sum() - loggamma(alpha.sum())
@@ -412,7 +424,6 @@ class BivariateBeta:
         res = minimize(fun=self.neg_log_likelihood, x0=alpha0, method='trust-constr', 
                        args = (x, y, lower_bounds, upper_bounds), 
                        bounds=[(0.1, 6)]*4, options={'gtol': 1e-16})
-        print(res)
         alpha_hat = res.x
         return alpha_hat
         
@@ -493,19 +504,20 @@ class BivariateBeta:
 
 # if __name__ == '__main__':
 
-#     true_alpha = np.array([1,1,1,1])
-#     sample_size = 1000
-#     monte_carlo_simulations = 10000
-#     B = 500
-#     seed = 8392
-#     bias, mse, comp, coverage = experiment_bivbeta(true_alpha, sample_size, monte_carlo_simulations, B, seed)
-#     print(bias, mse, comp, coverage)
-
-#     U = np.random.dirichlet(true_alpha, size=sample_size)
-#     X = U[:, 0] + U[:, 1]
-#     Y = U[:, 0] + U[:, 2]
-#     distribution = BivariateBeta()
-#     alpha_hat = distribution.modified_maximum_likelihood_estimator(X, Y, x0=(2,2,4))
-#     print(alpha_hat)
-#     alpha_hat = distribution.method_moments_estimator_2(X, Y)
-#     print(alpha_hat)
+#   true_alpha = np.array([1,1,1,1])
+#   sample_size = 50
+#   monte_carlo_simulations = 10000
+#   B = 500
+#   seed = 8392
+#   bias, mse, comp, coverage = experiment_bivbeta(true_alpha, sample_size, monte_carlo_simulations, B, seed)
+#   print(bias, mse, comp, coverage)
+#   U = np.random.dirichlet(true_alpha, size=sample_size)
+#   Y = U[:, 0] + U[:, 1]
+#   Y = U[:, 0] + U[:, 2]
+#   distribution = BivariateBeta()
+#   t0 = time.time()
+#   alpha_hat = distribution.method_moments_estimator_4(X, Y, alpha0=(1,1,1,1))
+#   print(alpha_hat)
+#   print(time.time()-t0)
+#   alpha_hat = distribution.method_moments_estimator_2(X, Y)
+#   print(alpha_hat)

@@ -20,15 +20,26 @@ import os
 import json
 from __init__ import ROOT_DIR
 
-def saving_document(filename, bias, mse, comp, coverage):
+def starting_experiment(true_alpha, sample_size, monte_carlo_size, bootstrap_size, seed):
     """
-    Saves the information for each experiment
+    Prepares the experiment file.
     """
+    filename = '../experiments/exp_' + '_'.join(str(e) for e in true_alpha) 
+    filename += '_' + str(sample_size) + '_' + str(monte_carlo_size)
+    filename += '_' + str(bootstrap_size) + '_' + str(seed) + '.json'
+    filename = os.path.join(ROOT_DIR, filename)
+
     if not os.path.exists(filename):
         with open(filename, 'w') as outfile:
             data = {'n_experiments': 0, 'bias': 0, 'mse': 0, 'comp': 0, 'coverage': 0}
             json.dump(data, outfile)
 
+    return filename
+
+def saving_document(filename, bias, mse, comp, coverage):
+    """
+    Saves the information for each experiment
+    """
     with open(filename, 'r') as outfile:
         data = json.load(outfile)
 
@@ -56,10 +67,7 @@ def experiment_bivbeta(true_alpha, sample_size, monte_carlo_size, bootstrap_size
     rng = np.random.default_rng(seed)
     distribution = BivariateBeta()
 
-    filename = '../experiments/exp_' + '_'.join(str(e) for e in true_alpha) 
-    filename += '_' + str(sample_size) + '_' + str(monte_carlo_size)
-    filename += '_' + str(bootstrap_size) + '_' + str(seed) + '.json'
-    filename = os.path.join(ROOT_DIR, filename)
+    filename = starting_experiment(true_alpha, sample_size, monte_carlo_size, bootstrap_size, seed)
 
     for exp in trange(monte_carlo_size):
         U = rng.dirichlet(true_alpha, size=sample_size)
