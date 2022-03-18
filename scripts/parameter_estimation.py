@@ -7,11 +7,9 @@ This script is a support for the (unpublished) paper "On a bivariate beta"
 from Lucas Machado Moschen and Luiz Max Carvalho. It allows the user to estimate 
 the parameter alpha as explained in the notes. 
 
-This script requires that `numpy` and `scipy` be installed within the Python 
+This script requires that `numpy`, `scipy` and `lintegrate` be installed within the Python 
 environment you are running. 
 """
-from time import time
-from tqdm import tqdm
 import numpy as np
 from scipy.special import gamma, loggamma, digamma
 from scipy.integrate import quad
@@ -418,7 +416,7 @@ class BivariateBeta:
         alpha_hat = res.x
         return alpha_hat
         
-    def modified_maximum_likelihood_estimator(self, x, y, x0):
+    def modified_maximum_likelihood_estimator(self, x, y, x0=(2,2,4)):
         """
         Modified likelihood estimator of parameter alpha given the bivariate data (x,y) of size n.
         Parameters
@@ -452,7 +450,7 @@ class BivariateBeta:
         alpha_hat = np.array([alpha1_hat, alpha2_hat, alpha3_hat, alpha4_hat])
         return alpha_hat
 
-    def bootstrap_method(self, x, y, B, method, seed=1000, alpha0=None):
+    def bootstrap_method(self, x, y, B, method, seed=1000, alpha0=None, x0=None):
         """
         Bootstrap samples for the estimated parameters alpha. It resamples with replacement 
         from x and y B times and for each estimate the parameter. 
@@ -460,7 +458,7 @@ class BivariateBeta:
         | x (n-array): data in the first component
         | y (n-array): data in the second component
         | B (int): number of bootstrap samples
-        | method (fuction): a function that receives arrays x        | and y, and returns an alpha. Pass alpha0 if necessary.
+        | method (fuction): a function that receives arrays x and y, and returns an alpha. Pass alpha0 if necessary.
         | seed (int): seed of the random object used in the function.
 
         Returns
@@ -471,151 +469,43 @@ class BivariateBeta:
         Y = ro.choice(y, size=(len(y), B))
         bootstrap_sample = np.zeros((4, B))
         for b in range(B):
-            if alpha0 is None:
+            if alpha0 is None and x0 is None:
                 alpha_hat = method(X[:, b], Y[:, b])
-            else:
+            elif x0 is None:
                 alpha_hat = method(X[:, b], Y[:, b], alpha0=alpha0)
+            else:
+                alpha_hat = method(X[:, b], Y[:, b], x0=x0)
             bootstrap_sample[:, b] = alpha_hat
         return bootstrap_sample
 
-def confidence_interval_calculus(level, samples):
-    """
-    Calculate the percentile interval of level 'level' (for instance level .95).
-    Parameters
-    | level (float): number between 0 and 1
-    | samples (n-array): the array to calculate the percentiles
+    def confidence_interval(self, level, samples):
+        """
+        Calculate the percentile interval of level 'level' (for instance level .95).
+        Parameters
+        | level (float): number between 0 and 1
+        | samples (n-array): the array to calculate the percentiles
 
-    Returns
-    | ci (2-array): array with the confidemce interval 
-    """
-    ci = np.quantile(samples, q=[(1-level)/2, (1+level)/2])
-    return ci
+        Returns
+        | ci (2-array): array with the confidemce interval 
+        """
+        ci = np.quantile(samples, q=[(1-level)/2, (1+level)/2], axis=1)
+        return ci
 
-def experiment_bivbeta(true_alpha, sample_size, monte_carlo_simulations, bootstrap_sample_size, seed):
+# if __name__ == '__main__':
 
-    bias = np.zeros(4)
-    mse = np.zeros(4)
-    comp = np.zeros(4)
-    coverage = np.zeros(4)
+#     true_alpha = np.array([1,1,1,1])
+#     sample_size = 1000
+#     monte_carlo_simulations = 10000
+#     B = 500
+#     seed = 8392
+#     bias, mse, comp, coverage = experiment_bivbeta(true_alpha, sample_size, monte_carlo_simulations, B, seed)
+#     print(bias, mse, comp, coverage)
 
-    rng = np.random.default_rng(seed)
-    distribution = BivariateBeta()
-    for exp in tqdm(range(monte_carlo_simulations)):
-        U = rng.dirichlet(true_alpha, size=sample_size)
-        X = U[:, 0] + U[:, 1]
-        Y = U[:, 0] + U[:, 2]
-    
-        t0 = time()
-        alpha_hat1 = distribution.method_moments_estimator_1(X, Y)
-        time1 = time() - t0
-        t0 = time()
-        alpha_hat2 = distribution.method_moments_estimator_2(X, Y)
-        time2 = time() - t0
-        t0 = time()
-        alpha_hat3 = distribution.method_moments_estimator_3(X, Y, alpha0=(1, 1))
-        time3 = time() - t0
-        t0 = time()
-        alpha_hat4 = distribution.method_moments_estimator_4(X, Y, alpha0=(1, 1, 1, 1))
-        time4 = time() - t0
-        alpha =  np.array([alpha_hat1, alpha_hat2, alpha_hat3, alpha_hat4])
-
-        bias_new = true_alpha - alpha
-        mse_new = (true_alpha - alpha) * (true_alpha - alpha)
-        comp_new = np.array([time1, time2, time3, time4])
-
-        bias = (bias * exp + bias_new)/(exp+1)
-        mse = (mse * exp + mse_new)/(mse+1)
-        comp = (comp * exp + comp_new)/(exp+1)
-
-        nb = 0
-        if exp < nb:
-
-            samples1 = distribution.bootstrap_method(x=X, y=Y, 
-                                                     B=bootstrap_sample_size, 
-                                                     method=distribution.method_moments_estimator_1, 
-                                                     seed=rng.integers(731032178))
-            ci1 = confidence_interval_calculus(level=0.95, samples=samples1)
-            samples2 = distribution.bootstrap_method(x=X, y=Y, 
-                                                     B=bootstrap_sample_size, 
-                                                     method=distribution.method_moments_estimator_2, 
-                                                     seed=rng.integers(731032178))
-            ci2 = confidence_interval_calculus(level=0.95, samples=samples2)
-            samples3 = distribution.bootstrap_method(x=X, y=Y, 
-                                                     B=bootstrap_sample_size, 
-                                                     method=distribution.method_moments_estimator_3, 
-                                                     seed=rng.integers(731032178),
-                                                     alpha0=(1,1))
-            ci3 = confidence_interval_calculus(level=0.95, samples=samples3)
-            samples4 = distribution.bootstrap_method(x=X, y=Y, 
-                                                     B=bootstrap_sample_size, 
-                                                     method=distribution.method_moments_estimator_4, 
-                                                     seed=rng.integers(731032178),
-                                                     alpha0=(1,1,1,1))
-            ci4 = confidence_interval_calculus(level=0.95, samples=samples4)
-
-            if ci1[0] < true_alpha[0] and ci1[1] > true_alpha[0]:
-                coverage[0] += 1/nb
-            if ci2[0] < true_alpha[1] and ci2[1] > true_alpha[1]:
-                coverage[1] += 1/nb
-            if ci3[0] < true_alpha[2] and ci3[1] > true_alpha[2]:
-                coverage[2] += 1/nb
-            if ci4[0] < true_alpha[3] and ci4[1] > true_alpha[3]:
-                coverage[3] += 1/nb
-
-    return bias, mse, comp, coverage
-
-def moments_logit_normal(mu, sigma):
-
-    Z = np.random.normal(mu, sigma, size=1000000)
-    X = 1/(1 + np.exp(-Z))
-    return np.array([X[:,0].mean(), X[:,1].mean(), X[:,0].var(), X[:,1].var(), np.corrcoef(X[:,0], X[:,1])[0,1]])
-
-def experiment_logitnormal(mu, sigma, sample_size, monte_carlo_simulations, bootstrap_sample_size, seed):
-
-    true_moments = moments_logit_normal(mu, sigma)
-    bias = np.zeros(4)
-    mse = np.zeros(4)
-
-    rng = np.random.default_rng(seed)
-    distribution = BivariateBeta()
-
-    for exp in tqdm(range(monte_carlo_simulations)):
-        Z = rng.multivariate_normal(mu, sigma, size=sample_size)
-        X = 1/(1 + np.exp(-Z[:,0]))
-        Y = 1/(1 + np.exp(-Z[:,1]))
-    
-        alpha_hat1 = distribution.method_moments_estimator_1(X, Y)
-        alpha_hat2 = distribution.method_moments_estimator_2(X, Y)
-        alpha_hat3 = distribution.method_moments_estimator_3(X, Y, alpha0=(1, 1))
-        alpha_hat4 = distribution.method_moments_estimator_4(X, Y, alpha0=(1, 1, 1, 1))
-        alpha =  np.array([alpha_hat1, alpha_hat2, alpha_hat3, alpha_hat4])
-
-        estimated_bivbeta = BivariateBeta(alpha=alpha)
-        estimated_moments = estimated_bivbeta.moments()
-
-        bias_new = true_moments - estimated_moments
-        mse_new = bias_new * bias_new
-        bias = (bias * exp + bias_new)/(exp+1)
-        mse = (mse * exp + mse_new)/(mse+1)
-
-    return bias, mse
-
-if __name__ == '__main__':
-
-    true_alpha = np.array([1,1,1,1])
-    sample_size = 1000
-    #monte_carlo_simulations = 10000
-    #B = 500
-    #seed = 8392
-    #bias, mse, comp, coverage = experiment_bivbeta(true_alpha, sample_size, monte_carlo_simulations, B, seed)
-    #print(bias, mse, comp, coverage)
-
-    U = np.random.dirichlet(true_alpha, size=sample_size)
-    X = U[:, 0] + U[:, 1]
-    Y = U[:, 0] + U[:, 2]
-    distribution = BivariateBeta()
-    alpha_hat = distribution.modified_maximum_likelihood_estimator(X, Y, x0=(2,2,4))
-    print(alpha_hat)
-    alpha_hat = distribution.method_moments_estimator_2(X, Y)
-    print(alpha_hat)
-
+#     U = np.random.dirichlet(true_alpha, size=sample_size)
+#     X = U[:, 0] + U[:, 1]
+#     Y = U[:, 0] + U[:, 2]
+#     distribution = BivariateBeta()
+#     alpha_hat = distribution.modified_maximum_likelihood_estimator(X, Y, x0=(2,2,4))
+#     print(alpha_hat)
+#     alpha_hat = distribution.method_moments_estimator_2(X, Y)
+#     print(alpha_hat)
