@@ -109,12 +109,12 @@ def experiment_bivbeta(true_alpha, sample_size, monte_carlo_size, bootstrap_size
             x0_parameters = [None, None, None, None, (2,2,4)]
 
             for ind in range(5):
-                samples = distribution.bootstrap_method(x=X, y=Y, 
-                                                        B=bootstrap_size,
-                                                        method=methods[ind], 
-                                                        seed=rng.integers(2**32-1),
-                                                        alpha0=alpha0_parameters[ind],
-                                                        x0=x0_parameters[ind])
+                samples = distribution.bootstrap_method_parallel(x=X, y=Y, 
+                                                                B=bootstrap_size,
+                                                                method=methods[ind], 
+                                                                seed=rng.integers(2**32-1),
+                                                                alpha0=alpha0_parameters[ind],
+                                                                x0=x0_parameters[ind])
                 ci = distribution.confidence_interval(level=0.95, samples=samples)
                 coverage_new[ind, :] = (ci[0,:] < true_alpha)*(ci[1,:] > true_alpha)
         

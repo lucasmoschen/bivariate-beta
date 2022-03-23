@@ -15,7 +15,8 @@ from scipy.special import gamma, loggamma, digamma
 from scipy.integrate import quad
 from scipy.optimize import minimize, minimize_scalar, root
 #import lintegrate
-import time
+from functools import partial
+import multiprocessing
 
 class BivariateBeta:
     """
@@ -490,6 +491,43 @@ class BivariateBeta:
             bootstrap_sample[:, b] = alpha_hat
         return bootstrap_sample
 
+    def _methods_wrapper(self, b, X, Y, alpha0, x0, method):
+        """
+        Maps the methods which demands different parameters.
+        """
+        if alpha0 is None and x0 is None:
+            alpha_hat = method(X[:, b], Y[:, b])
+        elif x0 is None:
+            alpha_hat = method(X[:, b], Y[:, b], alpha0=alpha0)
+        else:
+            alpha_hat = method(X[:, b], Y[:, b], x0=x0)
+        return alpha_hat
+
+    def bootstrap_method_parallel(self, x, y, B, method, processes=2, seed=1000, alpha0=None, x0=None):
+        """
+        Bootstrap samples for the estimated parameters alpha. It resamples with replacement 
+        from x and y B times and for each estimate the parameter. 
+        Parameters
+        | x (n-array): data in the first component
+        | y (n-array): data in the second component
+        | B (int): number of bootstrap samples
+        | method (fuction): a function that receives arrays x and y, and returns an alpha. Pass alpha0 if necessary.
+        | seed (int): seed of the random object used in the function.
+
+        Returns
+        | boostrap_sample (4xB-array): estimated parameters for each resample.
+        """
+        ro = np.random.RandomState(seed)
+        index = ro.choice(range(len(x)), size=(len(x), B))
+        X = x[index]
+        Y = y[index]
+
+        pool = multiprocessing.Pool(processes=processes)
+        estimating_b = partial(self._methods_wrapper, X=X, Y=Y, alpha0=alpha0, x0=x0, method=method)
+        bootstrap_sample = np.array(pool.map(estimating_b, range(B))).transpose()
+
+        return bootstrap_sample
+
     def confidence_interval(self, level, samples):
         """
         Calculate the percentile interval of level 'level' (for instance level .95).
@@ -516,7 +554,9 @@ class BivariateBeta:
     
 #     distribution = BivariateBeta()
 #     alpha_hat = distribution.method_moments_estimator_1(X, Y)
-#     samples = distribution.bootstrap_method(X, Y, B, distribution.method_moments_estimator_1)
+#     samples = distribution.bootstrap_method_parallel(X, Y, B, distribution.method_moments_estimator_1)
+#     samples2 = distribution.bootstrap_method(X, Y, B, distribution.method_moments_estimator_1)
 #     ci = distribution.confidence_interval(level=0.95, samples=samples)
-#     print(alpha_hat)
+#     ci2 = distribution.confidence_interval(level=0.95, samples=samples2)
 #     print(ci)
+#     print(ci2)
