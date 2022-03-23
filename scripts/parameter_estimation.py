@@ -476,8 +476,9 @@ class BivariateBeta:
         | boostrap_sample (4xB-array): estimated parameters for each resample.
         """
         ro = np.random.RandomState(seed)
-        X = ro.choice(x, size=(len(x), B))
-        Y = ro.choice(y, size=(len(y), B))
+        index = ro.choice(range(len(x)), size=(len(x), B))
+        X = x[index]
+        Y = y[index]
         bootstrap_sample = np.zeros((4, B))
         for b in range(B):
             if alpha0 is None and x0 is None:
@@ -504,20 +505,18 @@ class BivariateBeta:
 
 # if __name__ == '__main__':
 
-#   true_alpha = np.array([1,1,1,1])
-#   sample_size = 50
-#   monte_carlo_simulations = 10000
-#   B = 500
-#   seed = 8392
-#   bias, mse, comp, coverage = experiment_bivbeta(true_alpha, sample_size, monte_carlo_simulations, B, seed)
-#   print(bias, mse, comp, coverage)
-#   U = np.random.dirichlet(true_alpha, size=sample_size)
-#   Y = U[:, 0] + U[:, 1]
-#   Y = U[:, 0] + U[:, 2]
-#   distribution = BivariateBeta()
-#   t0 = time.time()
-#   alpha_hat = distribution.method_moments_estimator_4(X, Y, alpha0=(1,1,1,1))
-#   print(alpha_hat)
-#   print(time.time()-t0)
-#   alpha_hat = distribution.method_moments_estimator_2(X, Y)
-#   print(alpha_hat)
+#     true_alpha = np.array([2,4,3,1])
+#     sample_size = 50
+#     B = 20
+    
+#     ro = np.random.RandomState(378219)
+#     U = ro.dirichlet(true_alpha, size=sample_size)
+#     X = U[:, 0] + U[:, 1]
+#     Y = U[:, 0] + U[:, 2]
+    
+#     distribution = BivariateBeta()
+#     alpha_hat = distribution.method_moments_estimator_1(X, Y)
+#     samples = distribution.bootstrap_method(X, Y, B, distribution.method_moments_estimator_1)
+#     ci = distribution.confidence_interval(level=0.95, samples=samples)
+#     print(alpha_hat)
+#     print(ci)

@@ -31,12 +31,12 @@ def starting_experiment(true_alpha, sample_size, monte_carlo_size, bootstrap_siz
 
     if not os.path.exists(filename):
         with open(filename, 'w') as outfile:
-            data = {'n_experiments': 0, 'bias': 0, 'mse': 0, 'comp': 0, 'coverage': 0}
+            data = {'n_experiments': 0, 'bias': 0, 'mse': 0, 'mae': 0, 'comp': 0, 'coverage': 0}
             json.dump(data, outfile)
 
     return filename
 
-def saving_document(filename, bias, mse, comp, coverage):
+def saving_document(filename, bias, mse, mae, comp, coverage):
     """
     Saves the information for each experiment
     """
@@ -46,12 +46,14 @@ def saving_document(filename, bias, mse, comp, coverage):
     N = data['n_experiments']
     bias = (np.array(data['bias']) * N + bias)/(N + 1)
     mse = (np.array(data['mse']) * N + mse)/(N + 1)
+    mae = (np.array(data['mae']) * N + mae)/(N + 1)
     comp = (np.array(data['comp']) * N + comp)/(N + 1)
     coverage = (np.array(data['coverage']) * N + coverage)/(N + 1)
 
     data['n_experiments'] += 1
     data['bias'] = bias.tolist()
     data['mse'] = mse.tolist()
+    data['mae'] = mae.tolist()
     data['comp'] = comp.tolist()
     data['coverage'] = coverage.tolist()
 
@@ -94,9 +96,10 @@ def experiment_bivbeta(true_alpha, sample_size, monte_carlo_size, bootstrap_size
         # Updating the estimates iteratively
         bias_new = true_alpha - alpha
         mse_new = bias_new * bias_new
+        mae_new = abs(bias_new)
         comp_new = np.array([time1, time2, time3, time4, time5])
 
-        nb = 0
+        nb = monte_carlo_size
         if exp < nb:
 
             methods = [distribution.method_moments_estimator_1, distribution.method_moments_estimator_2, 
@@ -109,13 +112,13 @@ def experiment_bivbeta(true_alpha, sample_size, monte_carlo_size, bootstrap_size
                 samples = distribution.bootstrap_method(x=X, y=Y, 
                                                         B=bootstrap_size,
                                                         method=methods[ind], 
-                                                        seed=rng.integers(9999999999),
+                                                        seed=rng.integers(2**32-1),
                                                         alpha0=alpha0_parameters[ind],
                                                         x0=x0_parameters[ind])
                 ci = distribution.confidence_interval(level=0.95, samples=samples)
                 coverage_new[ind, :] = (ci[0,:] < true_alpha)*(ci[1,:] > true_alpha)
         
-        saving_document(filename, bias_new, mse_new, comp_new, coverage_new)
+        saving_document(filename, bias_new, mse_new, mae_new, comp_new, coverage_new)
 
 def moments_logit_normal(mu, sigma):
 
@@ -128,6 +131,7 @@ def experiment_logitnormal(mu, sigma, sample_size, monte_carlo_simulations, boot
     true_moments = moments_logit_normal(mu, sigma)
     bias = np.zeros(4)
     mse = np.zeros(4)
+    mae = np.zeros(4)
 
     rng = np.random.default_rng(seed)
     distribution = BivariateBeta()
@@ -148,17 +152,35 @@ def experiment_logitnormal(mu, sigma, sample_size, monte_carlo_simulations, boot
 
         bias_new = true_moments - estimated_moments
         mse_new = bias_new * bias_new
+        mae_new = abs(bias_new)
         bias = (bias * exp + bias_new)/(exp+1)
-        mse = (mse * exp + mse_new)/(mse+1)
+        mse = (mse * exp + mse_new)/(exp+1)
+        mae = (mae * exp + mae_new)/(exp+1)
 
-    return bias, mse
+    return bias, mse, mae
 
 if __name__ == '__main__':
 
     true_alpha = np.array([1,1,1,1])
     sample_size = 50
-    monte_carlo_size = 10000
+    monte_carlo_size = 1000
     bootstrap_size = 500
     seed = 8392
+
+    experiment_bivbeta(true_alpha, sample_size, monte_carlo_size, bootstrap_size, seed)
+    
+    true_alpha = np.array([2,3,4,1])
+    sample_size = 50
+    monte_carlo_size = 1000
+    bootstrap_size = 500
+    seed = 367219
+
+    experiment_bivbeta(true_alpha, sample_size, monte_carlo_size, bootstrap_size, seed)
+    
+    true_alpha = np.array([0.7,0.9,2,1.5])
+    sample_size = 50
+    monte_carlo_size = 1000
+    bootstrap_size = 500
+    seed = 52167
 
     experiment_bivbeta(true_alpha, sample_size, monte_carlo_size, bootstrap_size, seed)
