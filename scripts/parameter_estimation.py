@@ -462,7 +462,7 @@ class BivariateBeta:
         alpha_hat = np.array([alpha1_hat, alpha2_hat, alpha3_hat, alpha4_hat])
         return alpha_hat
 
-    def bootstrap_method(self, x, y, B, method, seed=1000, alpha0=None, x0=None):
+    def _bootstrap_method_not_parallel(self, x, y, B, method, seed=1000, alpha0=None, x0=None):
         """
         Bootstrap samples for the estimated parameters alpha. It resamples with replacement 
         from x and y B times and for each estimate the parameter. 
@@ -503,7 +503,7 @@ class BivariateBeta:
             alpha_hat = method(X[:, b], Y[:, b], x0=x0)
         return alpha_hat
 
-    def bootstrap_method_parallel(self, x, y, B, method, processes=2, seed=1000, alpha0=None, x0=None):
+    def bootstrap_method(self, x, y, B, method, processes=2, seed=1000, alpha0=None, x0=None):
         """
         Bootstrap samples for the estimated parameters alpha. It resamples with replacement 
         from x and y B times and for each estimate the parameter. 
