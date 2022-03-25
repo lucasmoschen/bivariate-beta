@@ -12,6 +12,7 @@ This script requires that `numpy`, `scipy`, `lintegrate` and `tqdm` be installed
 environment you are running. 
 """
 
+from random import sample
 import numpy as np
 from parameter_estimation import BivariateBeta
 from tqdm import tqdm, trange
@@ -36,7 +37,23 @@ def starting_experiment(true_alpha, sample_size, monte_carlo_size, bootstrap_siz
 
     return filename
 
-def saving_document(filename, bias, mse, mae, comp, coverage):
+def starting_experiment_2(mu, sigma, sample_size, monte_carlo_size, bootstrap_size, seed):
+    """
+    Prepares the experiment file.
+    """
+    filename = '../experiments/exp_logit_' + '_'.join(str(e) for e in mu) + '_'.join(str(e) for e in sigma.flatten())
+    filename += '_' + str(sample_size) + '_' + str(monte_carlo_size)
+    filename += '_' + str(bootstrap_size) + '_' + str(seed) + '.json'
+    filename = os.path.join(ROOT_DIR, filename)
+
+    if not os.path.exists(filename):
+        with open(filename, 'w') as outfile:
+            data = {'n_experiments': 0, 'bias': 0, 'mse': 0, 'mae': 0, 'comp': 0, 'coverage': 0}
+            json.dump(data, outfile)
+
+    return filename
+
+def saving_document_1(filename, bias, mse, mae, comp, coverage):
     """
     Saves the information for each experiment
     """
@@ -56,6 +73,26 @@ def saving_document(filename, bias, mse, mae, comp, coverage):
     data['mae'] = mae.tolist()
     data['comp'] = comp.tolist()
     data['coverage'] = coverage.tolist()
+
+    with open(filename, 'w') as outfile:
+        json.dump(data, outfile)
+
+def saving_document_2(filename, bias, mse, mae):
+    """
+    Saves the information for each experiment
+    """
+    with open(filename, 'r') as outfile:
+        data = json.load(outfile)
+
+    N = data['n_experiments']
+    bias = (np.array(data['bias']) * N + bias)/(N + 1)
+    mse = (np.array(data['mse']) * N + mse)/(N + 1)
+    mae = (np.array(data['mae']) * N + mae)/(N + 1)
+
+    data['n_experiments'] += 1
+    data['bias'] = bias.tolist()
+    data['mse'] = mse.tolist()
+    data['mae'] = mae.tolist()
 
     with open(filename, 'w') as outfile:
         json.dump(data, outfile)
@@ -119,7 +156,7 @@ def experiment_bivbeta(true_alpha, sample_size, monte_carlo_size, bootstrap_size
                 ci = distribution.confidence_interval(level=0.95, samples=samples)
                 coverage_new[ind, :] = (ci[0,:] < true_alpha)*(ci[1,:] > true_alpha)
         
-        saving_document(filename, bias_new, mse_new, mae_new, comp_new, coverage_new)
+        saving_document_1(filename, bias_new, mse_new, mae_new, comp_new, coverage_new)
 
 def moments_logit_normal(mu, sigma):
 
@@ -127,38 +164,43 @@ def moments_logit_normal(mu, sigma):
     X = 1/(1 + np.exp(-Z))
     return np.array([X[:,0].mean(), X[:,1].mean(), X[:,0].var(), X[:,1].var(), np.corrcoef(X[:,0], X[:,1])[0,1]])
 
-def experiment_logitnormal(mu, sigma, sample_size, monte_carlo_simulations, bootstrap_sample_size, seed):
-
+def experiment_logitnormal(mu, sigma, sample_size, monte_carlo_size, bootstrap_size, seed):
+    """
+    It does the experiments from Section "Recovering parameters from other bivariate distribution".
+    """
     true_moments = moments_logit_normal(mu, sigma)
-    bias = np.zeros(4)
-    mse = np.zeros(4)
-    mae = np.zeros(4)
+
+    coverage_new = np.zeros((5,4))
 
     rng = np.random.default_rng(seed)
     distribution = BivariateBeta()
 
-    for exp in tqdm(range(monte_carlo_simulations)):
+    filename = starting_experiment_2(mu, sigma, sample_size, monte_carlo_size, bootstrap_size, seed)
+
+    for exp in trange(monte_carlo_size):
         Z = rng.multivariate_normal(mu, sigma, size=sample_size)
-        X = 1/(1 + np.exp(-Z[:,0]))
-        Y = 1/(1 + np.exp(-Z[:,1]))
+        X = 1/(1 + np.exp(-Z[:, 0]))
+        Y = 1/(1 + np.exp(-Z[:, 1]))
     
         alpha_hat1 = distribution.method_moments_estimator_1(X, Y)
         alpha_hat2 = distribution.method_moments_estimator_2(X, Y)
         alpha_hat3 = distribution.method_moments_estimator_3(X, Y, alpha0=(1, 1))
         alpha_hat4 = distribution.method_moments_estimator_4(X, Y, alpha0=(1, 1, 1, 1))
-        alpha =  np.array([alpha_hat1, alpha_hat2, alpha_hat3, alpha_hat4])
+        alpha_hat5 = distribution.modified_maximum_likelihood_estimator(X, Y, x0=(2, 2, 4))
 
-        estimated_bivbeta = BivariateBeta(alpha=alpha)
-        estimated_moments = estimated_bivbeta.moments()
+        est_moments1 = BivariateBeta(alpha=alpha_hat1).moments()
+        est_moments2 = BivariateBeta(alpha=alpha_hat2).moments()
+        est_moments3 = BivariateBeta(alpha=alpha_hat3).moments()
+        est_moments4 = BivariateBeta(alpha=alpha_hat4).moments()
+        est_moments5 = BivariateBeta(alpha=alpha_hat5).moments()
+        est_moments = np.array([est_moments1, est_moments2, est_moments3, est_moments4, est_moments5])
 
-        bias_new = true_moments - estimated_moments
+        # Updating the estimates iteratively
+        bias_new = true_moments - est_moments
         mse_new = bias_new * bias_new
         mae_new = abs(bias_new)
-        bias = (bias * exp + bias_new)/(exp+1)
-        mse = (mse * exp + mse_new)/(exp+1)
-        mae = (mae * exp + mae_new)/(exp+1)
 
-    return bias, mse, mae
+        saving_document_2(filename, bias_new, mse_new, mae_new)
 
 if __name__ == '__main__':
 
