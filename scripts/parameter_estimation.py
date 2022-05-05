@@ -11,12 +11,13 @@ This script requires that `numpy`, `scipy` and `lintegrate` be installed within 
 environment you are running. 
 """
 import numpy as np
-from scipy.special import gamma, loggamma, digamma
+from scipy.special import gamma, loggamma, digamma, polygamma
 from scipy.integrate import quad
 from scipy.optimize import minimize, minimize_scalar, root
 #import lintegrate
 from functools import partial
 import multiprocessing
+from time import time
 
 class BivariateBeta:
     """
@@ -353,7 +354,7 @@ class BivariateBeta:
                                       {'type': 'ineq', 'fun': lambda x: (1-m2)*x[0] + (m1-m2)*x[1]}],
                          jac=derivative,
                          method='SLSQP',
-                         options={'ftol': 1e-10})
+                         options={'ftol': 1e-7})
         alpha_hat = np.ones(4)
         alpha_hat[2:] = result.x
         alpha_hat[:2] = self._system_two_solution(m1, m2, alpha_hat[2], alpha_hat[3])
@@ -396,7 +397,7 @@ class BivariateBeta:
                           constraints={'type': 'ineq', 
                                         'fun': lambda alpha: max(m1*(1-m1)/v1, m2*(1-m2)/v2) - 1 - sum(alpha)},
                           method='SLSQP',
-                          options={'ftol': 1e-10})
+                          options={'ftol': 1e-7})
         alpha_hat = result.x
         return alpha_hat
 
@@ -427,7 +428,7 @@ class BivariateBeta:
                        bounds=[(0.1, 6)]*4, options={'gtol': 1e-16})
         alpha_hat = res.x
         return alpha_hat
-        
+
     def modified_maximum_likelihood_estimator(self, x, y, x0=(2,2,4)):
         """
         Modified likelihood estimator of parameter alpha given the bivariate data (x,y) of size n.
@@ -443,15 +444,29 @@ class BivariateBeta:
 
         def system_equations(parameters, x, y):
             a, b, c = tuple(parameters)
-            n = len(x)
             dc = digamma(c)
-            fun1 = np.log(x).sum() + n * (dc - digamma(a)) 
-            fun2 = np.log1p(-x).sum() + n * (dc - digamma(c-a))
-            fun3 = np.log(y).sum() + n * (dc - digamma(b))
-            fun4 = np.log1p(-y).sum() + n * (dc - digamma(c-b))
-            return np.array([fun1, fun2, fun3, fun4])
+            fun1 = np.log(x).mean() - digamma(a)
+            fun2 = np.log1p(-x).mean() - digamma(c-a)
+            fun3 = np.log(y).mean() - digamma(b)
+            #fun4 = np.log1p(-y).mean() - digamma(c-b)
+            return np.array([fun1, fun2, fun3]) + dc
 
-        sol = root(fun=system_equations, x0=x0, args=(x,y), method='lm')
+        # def jacobian(parameters, x, y):
+        #     a, b, c = tuple(parameters)
+        #     n = len(x)
+        #     dpsi_a = polygamma(n=1, x=a)
+        #     dpsi_b = polygamma(n=1, x=b)
+        #     dpsi_c = polygamma(n=1, x=c)
+        #     dpsi_cb = polygamma(n=1, x=c-b)
+        #     dpsi_ca = polygamma(n=1, x=c-a)
+        #     return np.array([[-dpsi_a, 0, dpsi_c], 
+        #                      [dpsi_ca, 0, dpsi_c - dpsi_ca],
+        #                      [0, -dpsi_b, dpsi_c],
+        #                      [0, dpsi_cb, dpsi_c - dpsi_cb]])
+
+        sol = root(fun=system_equations, x0=x0, args=(x,y), method='hybr')
+        if not sol.success:
+            return np.zeros(4) * np.nan
         a, b, c = tuple(sol.x)
 
         alpha4_hat = (rho * np.sqrt(a*b*(c-a)*(c-b)) + (c-a)*(c-b))/c
@@ -521,7 +536,7 @@ class BivariateBeta:
         index = ro.choice(range(len(x)), size=(len(x), B))
         X = x[index]
         Y = y[index]
-
+        t0 = time()
         pool = multiprocessing.Pool(processes=processes)
         estimating_b = partial(self._methods_wrapper, X=X, Y=Y, alpha0=alpha0, x0=x0, method=method)
         bootstrap_sample = np.array(pool.map(estimating_b, range(B))).transpose()
@@ -536,7 +551,7 @@ class BivariateBeta:
         | samples (n-array): the array to calculate the percentiles
 
         Returns
-        | ci (2-array): array with the confidemce interval 
+        | ci (2-array): array with the confidence interval 
         """
         ci = np.quantile(samples, q=[(1-level)/2, (1+level)/2], axis=1)
         return ci
@@ -553,10 +568,5 @@ class BivariateBeta:
 #     Y = U[:, 0] + U[:, 2]
     
 #     distribution = BivariateBeta()
-#     alpha_hat = distribution.method_moments_estimator_1(X, Y)
-#     samples = distribution.bootstrap_method_parallel(X, Y, B, distribution.method_moments_estimator_1)
-#     samples2 = distribution.bootstrap_method(X, Y, B, distribution.method_moments_estimator_1)
-#     ci = distribution.confidence_interval(level=0.95, samples=samples)
-#     ci2 = distribution.confidence_interval(level=0.95, samples=samples2)
-#     print(ci)
-#     print(ci2)
+#     alpha_hat = distribution.modified_maximum_likelihood_estimator(X, Y)
+#     print(alpha_hat)

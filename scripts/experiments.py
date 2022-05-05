@@ -23,7 +23,8 @@ from __init__ import ROOT_DIR
 
 def starting_experiment(true_alpha, sample_size, monte_carlo_size, bootstrap_size, seed):
     """
-    Prepares the experiment file.
+    Prepares the experiment file for the well-specified case, that is, the data comes from
+    the Bivariate Beta distribution.
     """
     filename = '../experiments/exp_' + '_'.join(str(e) for e in true_alpha) 
     filename += '_' + str(sample_size) + '_' + str(monte_carlo_size)
@@ -55,7 +56,8 @@ def starting_experiment_2(mu, sigma, sample_size, monte_carlo_size, bootstrap_si
 
 def saving_document_1(filename, bias, mse, mae, comp, coverage):
     """
-    Saves the information for each experiment
+    Saves the information for each experiment in the well-specified case, that is, the data comes from
+    the Bivariate Beta distribution.
     """
     with open(filename, 'r') as outfile:
         data = json.load(outfile)
@@ -108,7 +110,7 @@ def experiment_bivbeta(true_alpha, sample_size, monte_carlo_size, bootstrap_size
 
     filename = starting_experiment(true_alpha, sample_size, monte_carlo_size, bootstrap_size, seed)
 
-    for exp in trange(monte_carlo_size):
+    for _ in trange(monte_carlo_size):
         U = rng.dirichlet(true_alpha, size=sample_size)
         X = U[:, 0] + U[:, 1]
         Y = U[:, 0] + U[:, 2]
@@ -136,25 +138,22 @@ def experiment_bivbeta(true_alpha, sample_size, monte_carlo_size, bootstrap_size
         mae_new = abs(bias_new)
         comp_new = np.array([time1, time2, time3, time4, time5])
 
-        nb = monte_carlo_size
-        if exp < nb:
+        methods = [distribution.method_moments_estimator_1, distribution.method_moments_estimator_2, 
+                   distribution.method_moments_estimator_3, distribution.method_moments_estimator_4, 
+                   distribution.modified_maximum_likelihood_estimator]
+        alpha0_parameters = [None, None, (1,1), (1,1,1,1), None]
+        x0_parameters = [None, None, None, None, (2,2,4)]
 
-            methods = [distribution.method_moments_estimator_1, distribution.method_moments_estimator_2, 
-                       distribution.method_moments_estimator_3, distribution.method_moments_estimator_4, 
-                       distribution.modified_maximum_likelihood_estimator]
-            alpha0_parameters = [None, None, (1,1), (1,1,1,1), None]
-            x0_parameters = [None, None, None, None, (2,2,4)]
-
-            for ind in range(5):
-                samples = distribution.bootstrap_method(x=X, y=Y, 
-                                                        B=bootstrap_size,
-                                                        method=methods[ind],
-                                                        processes=2,
-                                                        seed=rng.integers(2**32-1),
-                                                        alpha0=alpha0_parameters[ind],
-                                                        x0=x0_parameters[ind])
-                ci = distribution.confidence_interval(level=0.95, samples=samples)
-                coverage_new[ind, :] = (ci[0,:] < true_alpha)*(ci[1,:] > true_alpha)
+        for ind in range(5):
+            samples = distribution.bootstrap_method(x=X, y=Y, 
+                                                    B=bootstrap_size,
+                                                    method=methods[ind],
+                                                    processes=4,
+                                                    seed=rng.integers(2**32-1),
+                                                    alpha0=alpha0_parameters[ind],
+                                                    x0=x0_parameters[ind])
+            ci = distribution.confidence_interval(level=0.95, samples=samples)
+            coverage_new[ind, :] = (ci[0,:] < true_alpha)*(ci[1,:] > true_alpha)
         
         saving_document_1(filename, bias_new, mse_new, mae_new, comp_new, coverage_new)
 
@@ -204,26 +203,29 @@ def experiment_logitnormal(mu, sigma, sample_size, monte_carlo_size, bootstrap_s
 
 if __name__ == '__main__':
 
+    monte_carlo_size = 1000
+    bootstrap_size = 500
+
     true_alpha = np.array([1,1,1,1])
     sample_size = 50
-    monte_carlo_size = 1000
-    bootstrap_size = 500
     seed = 8392
-
     experiment_bivbeta(true_alpha, sample_size, monte_carlo_size, bootstrap_size, seed)
+
+    # sample_size = 1000
+    # experiment_bivbeta(true_alpha, sample_size, monte_carlo_size, bootstrap_size, seed)
     
-    true_alpha = np.array([2,3,4,1])
-    sample_size = 50
-    monte_carlo_size = 1000
-    bootstrap_size = 500
-    seed = 367219
+    # true_alpha = np.array([2,3,4,1])
+    # sample_size = 50
+    # seed = 367219
+    # experiment_bivbeta(true_alpha, sample_size, monte_carlo_size, bootstrap_size, seed)
 
-    experiment_bivbeta(true_alpha, sample_size, monte_carlo_size, bootstrap_size, seed)
+    # sample_size = 1000
+    # experiment_bivbeta(true_alpha, sample_size, monte_carlo_size, bootstrap_size, seed)
     
-    true_alpha = np.array([0.7,0.9,2,1.5])
-    sample_size = 50
-    monte_carlo_size = 1000
-    bootstrap_size = 500
-    seed = 52167
+    # true_alpha = np.array([0.7,0.9,2,1.5])
+    # sample_size = 50
+    # seed = 52167
+    # experiment_bivbeta(true_alpha, sample_size, monte_carlo_size, bootstrap_size, seed)
 
-    experiment_bivbeta(true_alpha, sample_size, monte_carlo_size, bootstrap_size, seed)
+    # sample_size = 1000
+    # experiment_bivbeta(true_alpha, sample_size, monte_carlo_size, bootstrap_size, seed)
