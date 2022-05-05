@@ -211,8 +211,8 @@ if __name__ == '__main__':
     seed = 8392
     experiment_bivbeta(true_alpha, sample_size, monte_carlo_size, bootstrap_size, seed)
 
-    # sample_size = 1000
-    # experiment_bivbeta(true_alpha, sample_size, monte_carlo_size, bootstrap_size, seed)
+    sample_size = 1000
+    experiment_bivbeta(true_alpha, sample_size, monte_carlo_size, bootstrap_size, seed)
     
     # true_alpha = np.array([2,3,4,1])
     # sample_size = 50

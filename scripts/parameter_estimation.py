@@ -556,17 +556,18 @@ class BivariateBeta:
         ci = np.quantile(samples, q=[(1-level)/2, (1+level)/2], axis=1)
         return ci
 
-# if __name__ == '__main__':
+if __name__ == '__main__':
 
-#     true_alpha = np.array([2,4,3,1])
-#     sample_size = 50
-#     B = 20
+    true_alpha = np.array([2,4,3,1])
+    sample_size = 10
     
-#     ro = np.random.RandomState(378219)
-#     U = ro.dirichlet(true_alpha, size=sample_size)
-#     X = U[:, 0] + U[:, 1]
-#     Y = U[:, 0] + U[:, 2]
+    ro = np.random.RandomState(378219)
+    U = ro.dirichlet(true_alpha, size=sample_size)
+    X = U[:, 0] + U[:, 1]
+    Y = U[:, 0] + U[:, 2]
     
-#     distribution = BivariateBeta()
-#     alpha_hat = distribution.modified_maximum_likelihood_estimator(X, Y)
-#     print(alpha_hat)
+    distribution = BivariateBeta()
+    alpha_hat = distribution.method_moments_estimator_1(X, Y)
+    print(alpha_hat)
+    alpha_hat = distribution.method_moments_estimator_2(X, Y)
+    print(alpha_hat)
