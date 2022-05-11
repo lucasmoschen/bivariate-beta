@@ -11,7 +11,7 @@ This script requires that `numpy`, `scipy` and `lintegrate` be installed within 
 environment you are running. 
 """
 import numpy as np
-from scipy.special import gamma, loggamma, digamma, polygamma
+from scipy.special import gamma, loggamma, digamma
 from scipy.integrate import quad
 from scipy.optimize import minimize, minimize_scalar, root
 #import lintegrate
