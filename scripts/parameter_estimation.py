@@ -81,18 +81,6 @@ class BivariateBeta:
         result = quad(self._integral_pdf, lb, ub, args = (x, y, self.alpha), epsabs=1e-10, limit=50)[0]
         return result/c
 
-    def _alternative_integral_pdf(self, x, y, alpha, lb, ub):
-        u = self.uniform*(ub - lb) + lb
-        return (ub - lb) * np.mean(self._integral_pdf(u, x, y, alpha, False))
-
-    def _alternative_integral_pdf_2(self, x, y, alpha, lb, ub):
-        lb, ub = lb/x, ub/x
-        c = quad(func=lambda t, a, b: t**(a-1) * (1-t)**(b-1), 
-                 a=lb, b=ub, args=(alpha[0], alpha[1]))[0]
-        samples = self.beta_samples[(self.beta_samples>=lb)*(self.beta_samples<=ub)]
-        monte_carlo = np.mean((y - x * samples)**(alpha[2]-1) * (1 - x - y + x * samples)**(alpha[3]-1))
-        return c, monte_carlo
-
     def log_pdf(self, x, y, alpha = None, lb = 0, ub = 1):
         """
         Returns the log pdf value for given x and y, and a parameter alpha pre-specified.
@@ -118,12 +106,15 @@ class BivariateBeta:
         result = np.log(quad(self._integral_pdf, lb, ub, args = (x, y, alpha), epsabs=1e-10, limit=50)[0])
         # Uses the library lintegrate from mattpitkin
         #result = lintegrate.lqag(self._log_integral_pdf, lb, ub, args=(x,y,alpha))[0]
-        # Uses Monte Carlo approximation with uniform draws
-        #result = np.log(self._alternative_integral_pdf(x, y, alpha, lb, ub))
-        # Uses Monte Carlo approximation with beta draws
-        #result = self._alternative_integral_pdf_2(x, y, alpha, lb, ub)
-        #result = np.log(result[0]) + (alpha[0]+alpha[1]-1)*np.log(x) + np.log(result[1])
         return result
+
+    def neg_log_likelihood(self, alpha, x, y, lb, ub):
+        #self.beta_samples = np.random.beta(a=alpha[0], b=alpha[1], size=10000)
+        log_pdf = sum([self.log_pdf(x_i, y_i, alpha, lb_i, ub_i) for (x_i, y_i, lb_i, ub_i) in zip(x,y,lb,ub)])
+        # normalizing constant
+        c = loggamma(alpha).sum() - loggamma(alpha.sum())
+        L_neg = -(log_pdf - len(x) * c)
+        return L_neg
 
     def moments(self) -> np.array:
         """
@@ -401,14 +392,6 @@ class BivariateBeta:
         alpha_hat = result.x
         return alpha_hat
 
-    def neg_log_likelihood(self, alpha, x, y, lb, ub):
-        #self.beta_samples = np.random.beta(a=alpha[0], b=alpha[1], size=10000)
-        log_pdf = sum([self.log_pdf(x_i, y_i, alpha, lb_i, ub_i) for (x_i, y_i, lb_i, ub_i) in zip(x,y,lb,ub)])
-        # normalizing constant
-        c = loggamma(alpha).sum() - loggamma(alpha.sum())
-        L_neg = -(log_pdf - len(x) * c)
-        return L_neg
-
     def maximum_likelihood_estimator(self, x, y, alpha0):
         """
         Maximum likelihood estimator of parameter alpha given the bivariate data (x,y) of size n.
@@ -477,45 +460,22 @@ class BivariateBeta:
         alpha_hat = np.array([alpha1_hat, alpha2_hat, alpha3_hat, alpha4_hat])
         return alpha_hat
 
-    def _bootstrap_method_not_parallel(self, x, y, B, method, seed=1000, alpha0=None, x0=None):
+    def _bootstrap_wrapper(self, b, X, Y, alpha0, x0, method):
         """
-        Bootstrap samples for the estimated parameters alpha. It resamples with replacement 
-        from x and y B times and for each estimate the parameter. 
-        Parameters
-        | x (n-array): data in the first component
-        | y (n-array): data in the second component
-        | B (int): number of bootstrap samples
-        | method (fuction): a function that receives arrays x and y, and returns an alpha. Pass alpha0 if necessary.
-        | seed (int): seed of the random object used in the function.
-
-        Returns
-        | boostrap_sample (4xB-array): estimated parameters for each resample.
+        Maps the bootstrap sample for the methods wrapper.
         """
-        ro = np.random.RandomState(seed)
-        index = ro.choice(range(len(x)), size=(len(x), B))
-        X = x[index]
-        Y = y[index]
-        bootstrap_sample = np.zeros((4, B))
-        for b in range(B):
-            if alpha0 is None and x0 is None:
-                alpha_hat = method(X[:, b], Y[:, b])
-            elif x0 is None:
-                alpha_hat = method(X[:, b], Y[:, b], alpha0=alpha0)
-            else:
-                alpha_hat = method(X[:, b], Y[:, b], x0=x0)
-            bootstrap_sample[:, b] = alpha_hat
-        return bootstrap_sample
+        return self._methods_wrapper(X[:, b], Y[:, b], alpha0=alpha0, x0=x0, method=method)
 
-    def _methods_wrapper(self, b, X, Y, alpha0, x0, method):
+    def _methods_wrapper(self, x, y, alpha0, x0, method):
         """
         Maps the methods which demands different parameters.
         """
         if alpha0 is None and x0 is None:
-            alpha_hat = method(X[:, b], Y[:, b])
+            alpha_hat = method(x, y)
         elif x0 is None:
-            alpha_hat = method(X[:, b], Y[:, b], alpha0=alpha0)
+            alpha_hat = method(x, y, alpha0=alpha0)
         else:
-            alpha_hat = method(X[:, b], Y[:, b], x0=x0)
+            alpha_hat = method(x, y, x0=x0)
         return alpha_hat
 
     def bootstrap_method(self, x, y, B, method, processes=2, seed=1000, alpha0=None, x0=None):
@@ -536,7 +496,31 @@ class BivariateBeta:
         index = ro.choice(range(len(x)), size=(len(x), B))
         X = x[index]
         Y = y[index]
-        t0 = time()
+        pool = multiprocessing.Pool(processes=processes)
+        estimating_b = partial(self._bootstrap_wrapper, X=X, Y=Y, alpha0=alpha0, x0=x0, method=method)
+        bootstrap_sample = np.array(pool.map(estimating_b, range(B))).transpose()
+
+        return bootstrap_sample
+
+    def bootstrap_method_parametric(self, x, y, B, method, processes=2, seed=1000, alpha0=None, x0=None):
+        """
+        Bootstrap samples for the estimated parameters alpha. It resamples with replacement 
+        from x and y B times and for each estimate the parameter. 
+        Parameters
+        | x (n-array): data in the first component
+        | y (n-array): data in the second component
+        | B (int): number of bootstrap samples
+        | method (fuction): a function that receives arrays x and y, and returns an alpha. Pass alpha0 if necessary.
+        | seed (int): seed of the random object used in the function.
+
+        Returns
+        | boostrap_sample (4xB-array): estimated parameters for each resample.
+        """
+        ro = np.random.RandomState(seed)
+        alpha_hat = self._methods_wrapper(x, y, alpha0=alpha0, x0=x0, method=method)
+        U = ro.dirichlet(alpha_hat, size=B)
+        X = U[:,0] + U[:,1]
+        Y = U[:,0] + U[:,2]
         pool = multiprocessing.Pool(processes=processes)
         estimating_b = partial(self._methods_wrapper, X=X, Y=Y, alpha0=alpha0, x0=x0, method=method)
         bootstrap_sample = np.array(pool.map(estimating_b, range(B))).transpose()
