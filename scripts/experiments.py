@@ -21,7 +21,6 @@ import os
 import json
 from __init__ import ROOT_DIR
 
-
 def starting_experiment(true_alpha, sample_size, monte_carlo_size, bootstrap_size, seed):
     """
     Prepares the experiment file for the well-specified case, that is, the data comes from
@@ -134,7 +133,7 @@ def experiment_bivbeta(true_alpha, sample_size, monte_carlo_size, bootstrap_size
         alpha = np.array([alpha_hat1, alpha_hat2, alpha_hat3, alpha_hat4, alpha_hat5])
 
         # Updating the estimates iteratively
-        bias_new = true_alpha - alpha
+        bias_new = alpha - true_alpha
         mse_new = bias_new * bias_new
         mape_new = abs(bias_new)/true_alpha
         comp_new = np.array([time1, time2, time3, time4, time5])
@@ -196,7 +195,7 @@ def experiment_logitnormal(mu, sigma, sample_size, monte_carlo_size, seed):
         est_moments = np.array([est_moments1, est_moments2, est_moments3, est_moments4, est_moments5])
 
         # Updating the estimates iteratively
-        bias_new = true_moments - est_moments
+        bias_new = est_moments - true_moments
         mse_new = bias_new * bias_new
         mape_new = abs(bias_new)/true_moments
 
@@ -239,17 +238,17 @@ def variation_alpha4(true_alpha, sample_size, monte_carlo_size, seed):
 if __name__ == '__main__':
 
     monte_carlo_size = 1000
-    #bootstrap_size = 500
+    bootstrap_size = 500
 
-    # true_alpha = np.array([1,1,1,1])
+    true_alpha = np.array([1,1,1,1])
     # true_alpha = np.array([2,3,4,1])
     #true_alpha = np.array([0.7,0.9,2,1.5])
-    #sample_size = 50
-    #seed = 367219
-    #experiment_bivbeta(true_alpha, sample_size, monte_carlo_size, bootstrap_size, seed)
+    sample_size = 50
+    seed = 367219
+    experiment_bivbeta(true_alpha, sample_size, monte_carlo_size, bootstrap_size, seed)
 
-    #sample_size = 1000
-    #experiment_bivbeta(true_alpha, sample_size, monte_carlo_size, bootstrap_size, seed)
+    sample_size = 1000
+    experiment_bivbeta(true_alpha, sample_size, monte_carlo_size, bootstrap_size, seed)
 
     #mu = np.array([-1,-1])
     #sigma = np.array([[1, -0.8], [-0.8, 1]])
@@ -272,7 +271,7 @@ if __name__ == '__main__':
     # d = BivariateBeta(alpha=alpha_hat1)
     # print(d.moments())
 
-    true_alpha = np.array([2,3,4,1])
-    sample_size = 50
-    seed = 367219
-    variation_alpha4(true_alpha, sample_size, monte_carlo_size, seed)
+    #true_alpha = np.array([2,3,4,1])
+    #sample_size = 50
+    #seed = 367219
+    #variation_alpha4(true_alpha, sample_size, monte_carlo_size, seed)
