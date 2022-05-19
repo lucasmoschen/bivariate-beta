@@ -30,15 +30,15 @@ def json2file_bivbeta(filename1, filename2):
             return 'Bias ($10^{-2}$)'
         elif evaluation == 'mse':
             return 'MSE ($10^{-2}$)'
-        elif evaluation == 'mae':
-            return 'MAE ($10^{-1}$)'
+        elif evaluation == 'mape':
+            return 'MAPE ($10^{-1}$)'
         elif evaluation == 'coverage':
             return 'Coverage (\%)'
 
     table = ''
     for id, method in enumerate(['MM1', 'MM2', 'MM3', 'MM4', 'MML']):
         table += "\multirow{4}{*}{"+method+"}"
-        for evaluation in ['bias', 'mse', 'mae', 'coverage']:
+        for evaluation in ['bias', 'mse', 'mape', 'coverage']:
             data = tuple(experiment1[evaluation][id] + experiment2[evaluation][id])
             table += '& '+ evaluation_name(evaluation) + ' '
             for i in range(8):
@@ -87,10 +87,10 @@ def json2file_logit_normal(filename):
 if __name__ == '__main__':
 
     json2file_bivbeta(
-              'Documents/GitHub/bivariate-beta/experiments/exp_2_4_3_1_50_1000_500_367219.json',
-              'Documents/GitHub/bivariate-beta/experiments/exp_2_4_3_1_1000_1000_500_367219.json', 
+              'Documents/GitHub/bivariate-beta/experiments/exp_0.7_0.9_2.0_1.5_50_1000_500_367219.json',
+              'Documents/GitHub/bivariate-beta/experiments/exp_0.7_0.9_2.0_1.5_1000_1000_500_367219.json', 
               )
 
     #json2file_logit_normal('Documents/GitHub/bivariate-beta/experiments/exp_logit_0_01.0_0.1_0.1_1.0_50_1000_63127371.json')
-    json2file_logit_normal('Documents/GitHub/bivariate-beta/experiments/exp_logit_-1_-11.0_-0.8_-0.8_1.0_50_1000_63127371.json')
+    #json2file_logit_normal('Documents/GitHub/bivariate-beta/experiments/exp_logit_-1_-11.0_-0.8_-0.8_1.0_50_1000_63127371.json')
     

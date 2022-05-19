@@ -240,9 +240,9 @@ if __name__ == '__main__':
     monte_carlo_size = 1000
     bootstrap_size = 500
 
-    true_alpha = np.array([1,1,1,1])
-    # true_alpha = np.array([2,3,4,1])
-    #true_alpha = np.array([0.7,0.9,2,1.5])
+    #true_alpha = np.array([1,1,1,1])
+    #true_alpha = np.array([2,7,3,1])
+    true_alpha = np.array([0.7,0.9,2,1.5])
     sample_size = 50
     seed = 367219
     experiment_bivbeta(true_alpha, sample_size, monte_carlo_size, bootstrap_size, seed)

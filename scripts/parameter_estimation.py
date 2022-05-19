@@ -10,6 +10,7 @@ the parameter alpha as explained in the notes.
 This script requires that `numpy`, `scipy` and `lintegrate` be installed within the Python 
 environment you are running. 
 """
+from importlib.metadata import distribution
 import numpy as np
 from scipy.special import gamma, loggamma, digamma
 from scipy.integrate import quad
@@ -17,7 +18,7 @@ from scipy.optimize import minimize, minimize_scalar, root
 #import lintegrate
 from functools import partial
 import multiprocessing
-from time import time
+import matplotlib.pyplot as plt
 
 class BivariateBeta:
     """
@@ -542,16 +543,6 @@ class BivariateBeta:
 
 if __name__ == '__main__':
 
-    true_alpha = np.array([2,4,3,1])
-    sample_size = 10
-    
-    ro = np.random.RandomState(378219)
-    U = ro.dirichlet(true_alpha, size=sample_size)
-    X = U[:, 0] + U[:, 1]
-    Y = U[:, 0] + U[:, 2]
-    
-    distribution = BivariateBeta()
-    alpha_hat = distribution.method_moments_estimator_1(X, Y)
-    print(alpha_hat)
-    alpha_hat = distribution.method_moments_estimator_2(X, Y)
-    print(alpha_hat)
+    true_alpha = np.array([2,7,3,1])    
+    distribution = BivariateBeta(true_alpha)
+    print(distribution.moments()[-1])
