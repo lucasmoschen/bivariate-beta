@@ -99,7 +99,7 @@ def saving_document_2(filename, bias, mse, mape):
     with open(filename, 'w') as outfile:
         json.dump(data, outfile)
 
-def experiment_bivbeta(true_alpha, sample_size, monte_carlo_size, bootstrap_size, seed):
+def experiment_bivbeta(true_alpha, sample_size, monte_carlo_size, bootstrap_size, seed, coverage=True):
     """
     It does the experiments from Section "Recovering parameters from bivariate beta".
     """
@@ -138,22 +138,24 @@ def experiment_bivbeta(true_alpha, sample_size, monte_carlo_size, bootstrap_size
         mape_new = abs(bias_new)/true_alpha
         comp_new = np.array([time1, time2, time3, time4, time5])
 
-        methods = [distribution.method_moments_estimator_1, distribution.method_moments_estimator_2, 
-                   distribution.method_moments_estimator_3, distribution.method_moments_estimator_4, 
-                   distribution.modified_maximum_likelihood_estimator]
-        alpha0_parameters = [None, None, (1,1), (1,1,1,1), None]
-        x0_parameters = [None, None, None, None, (2,2,4)]
+        if coverage:
 
-        for ind in range(5):
-            samples = distribution.bootstrap_method(x=X, y=Y, 
-                                                    B=bootstrap_size,
-                                                    method=methods[ind],
-                                                    processes=4,
-                                                    seed=rng.integers(2**32-1),
-                                                    alpha0=alpha0_parameters[ind],
-                                                    x0=x0_parameters[ind])
-            ci = distribution.confidence_interval(level=0.95, samples=samples)
-            coverage_new[ind, :] = (ci[0,:] < true_alpha)*(ci[1,:] > true_alpha)
+            methods = [distribution.method_moments_estimator_1, distribution.method_moments_estimator_2, 
+                       distribution.method_moments_estimator_3, distribution.method_moments_estimator_4, 
+                       distribution.modified_maximum_likelihood_estimator]
+            alpha0_parameters = [None, None, (1,1), (1,1,1,1), None]
+            x0_parameters = [None, None, None, None, (2,2,4)]
+
+            for ind in range(5):
+                samples = distribution.bootstrap_method(x=X, y=Y, 
+                                                        B=bootstrap_size,
+                                                        method=methods[ind],
+                                                        processes=4,
+                                                        seed=rng.integers(2**32-1),
+                                                        alpha0=alpha0_parameters[ind],
+                                                        x0=x0_parameters[ind])
+                ci = distribution.confidence_interval(level=0.95, samples=samples)
+                coverage_new[ind, :] = (ci[0,:] < true_alpha)*(ci[1,:] > true_alpha)
         
         saving_document_1(filename, bias_new, mse_new, mape_new, comp_new, coverage_new)
 
@@ -235,20 +237,52 @@ def variation_alpha4(true_alpha, sample_size, monte_carlo_size, seed):
 
     plt.show()  
 
+def comparing_methods(true_alpha, monte_carlo_size, bootstrap_size, seed):
+
+    filename1 = starting_experiment(true_alpha, 50, monte_carlo_size, bootstrap_size, seed)
+    filename2 = starting_experiment(true_alpha, 1000, monte_carlo_size, bootstrap_size, seed)
+    with open(filename1, 'r') as f:
+        experiment1 = json.load(f)
+    with open(filename2, 'r') as f:
+        experiment2 = json.load(f)
+
+    methods = ['MM1', 'MM2', 'MM3', 'MM4', 'MML']
+
+    bias1 = [np.mean(np.abs(experiment1['bias'][i])) for i in range(5)]
+    mape1 = [np.mean(experiment1['mape'][i]) for i in range(5)]
+    bias2 = [np.mean(np.abs(experiment2['bias'][i])) for i in range(5)]
+    mape2 = [np.mean(experiment2['mape'][i]) for i in range(5)]
+
+    _, ax = plt.subplots(2,2)
+
+    ax[0,0].bar(methods, mape1, color='black')
+    ax[0,1].bar(methods, bias1, color='black')
+    ax[1,0].bar(methods, mape2, color='black')
+    ax[1,1].bar(methods, bias2, color='black')
+
+    ax[0,0].set_ylabel(r'$n=50$')
+    ax[1,0].set_ylabel(r'$n=1000$')
+    ax[0,0].set_title('Average MAPE')
+    ax[0,1].set_title('Average absolute bias')
+
+    plt.show()
+
 if __name__ == '__main__':
 
     monte_carlo_size = 1000
     bootstrap_size = 500
 
-    #true_alpha = np.array([1,1,1,1])
+    true_alpha = np.array([1,1,1,1])
     #true_alpha = np.array([2,7,3,1])
-    true_alpha = np.array([0.7,0.9,2,1.5])
+    #true_alpha = np.array([0.7,0.9,2,1.5])
     sample_size = 50
-    seed = 367219
+    seed = 3781288
     experiment_bivbeta(true_alpha, sample_size, monte_carlo_size, bootstrap_size, seed)
 
     sample_size = 1000
     experiment_bivbeta(true_alpha, sample_size, monte_carlo_size, bootstrap_size, seed)
+
+    #comparing_methods(true_alpha, monte_carlo_size, bootstrap_size, seed)
 
     #mu = np.array([-1,-1])
     #sigma = np.array([[1, -0.8], [-0.8, 1]])

@@ -10,6 +10,7 @@ the parameter alpha as explained in the notes.
 This script requires that `numpy`, `scipy` and `lintegrate` be installed within the Python 
 environment you are running. 
 """
+from ensurepip import bootstrap
 from importlib.metadata import distribution
 import numpy as np
 from scipy.special import gamma, loggamma, digamma
@@ -389,7 +390,7 @@ class BivariateBeta:
                           constraints={'type': 'ineq', 
                                         'fun': lambda alpha: max(m1*(1-m1)/v1, m2*(1-m2)/v2) - 1 - sum(alpha)},
                           method='SLSQP',
-                          options={'ftol': 1e-7})
+                          options={'ftol': 1e-10})
         alpha_hat = result.x
         return alpha_hat
 
@@ -519,11 +520,11 @@ class BivariateBeta:
         """
         ro = np.random.RandomState(seed)
         alpha_hat = self._methods_wrapper(x, y, alpha0=alpha0, x0=x0, method=method)
-        U = ro.dirichlet(alpha_hat, size=B)
-        X = U[:,0] + U[:,1]
-        Y = U[:,0] + U[:,2]
+        U = ro.dirichlet(alpha_hat, size=(len(x), B))
+        X = U[:,:,0] + U[:,:,1]
+        Y = U[:,:,0] + U[:,:,2]
         pool = multiprocessing.Pool(processes=processes)
-        estimating_b = partial(self._methods_wrapper, X=X, Y=Y, alpha0=alpha0, x0=x0, method=method)
+        estimating_b = partial(self._bootstrap_wrapper, X=X, Y=Y, alpha0=alpha0, x0=x0, method=method)
         bootstrap_sample = np.array(pool.map(estimating_b, range(B))).transpose()
 
         return bootstrap_sample
@@ -543,6 +544,16 @@ class BivariateBeta:
 
 if __name__ == '__main__':
 
-    true_alpha = np.array([2,7,3,1])    
-    distribution = BivariateBeta(true_alpha)
-    print(distribution.moments()[-1])
+    true_alpha = np.array([1,1,1,1])
+    counter = np.zeros(4)
+    for i in range(100):
+        print(i)
+        U = np.random.dirichlet(true_alpha, size=50)
+        X = U[:,0] + U[:,1]
+        Y = U[:,0] + U[:,2]
+        distribution = BivariateBeta()
+        sample = distribution.bootstrap_method_parametric(X, Y, B=500, method=distribution.method_moments_estimator_1, 
+                                                        processes=4, seed=3217)
+        ci = distribution.confidence_interval(level=.95, samples=sample)
+        counter += (ci[0,:] < true_alpha)*(ci[1,:] > true_alpha)
+    print(counter)
