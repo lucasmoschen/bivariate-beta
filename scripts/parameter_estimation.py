@@ -10,16 +10,16 @@ the parameter alpha as explained in the notes.
 This script requires that `numpy`, `scipy` and `lintegrate` be installed within the Python 
 environment you are running. 
 """
-from ensurepip import bootstrap
-from importlib.metadata import distribution
 import numpy as np
-from scipy.special import gamma, loggamma, digamma
+from scipy.special import gamma, loggamma, digamma, beta
+from mpmath import appellf1
 from scipy.integrate import quad
 from scipy.optimize import minimize, minimize_scalar, root
 #import lintegrate
 from functools import partial
 import multiprocessing
 import matplotlib.pyplot as plt
+import time 
 
 class BivariateBeta:
     """
@@ -82,6 +82,46 @@ class BivariateBeta:
         ub = min(x,y)
         result = quad(self._integral_pdf, lb, ub, args = (x, y, self.alpha), epsabs=1e-10, limit=50)[0]
         return result/c
+
+    def pdf_appell(self, x, y) -> float:
+        """
+        Returns the pdf value for given x and y, and a parameter alpha pre-specified. 
+        This implementation use the hypergeometric formulation.
+
+        Parameters:
+        | x (float): a value between 0 and 1
+        | y (float): a value between 0 and 1
+
+        Returns:
+        | result (float): density of bivariate beta distribution at (x,y)
+        """
+        if x <= 0 or x >= 1 or y <= 0 or y >= 1: return 0.0
+        alpha1, alpha2, alpha3, alpha4 = tuple(self.alpha)
+
+        # supposition of continuity
+        if x == y:
+            y = x + 1e-10
+        if x+y == 1:
+            y=1-x+1e-10
+
+        # normalizing constant
+        c = gamma(self.alpha).prod()/gamma(self.alpha.sum())
+
+        if x+y<1:
+            if x<y:
+                v = beta(alpha1, alpha2) * x**(alpha1+alpha2-1) * y**(alpha3-1) * (1-x-y)**(alpha4-1)
+                v *= appellf1(alpha1, 1-alpha3, 1-alpha4, alpha1+alpha2, x/y, x/(x+y-1), maxterms=2000)
+            else:
+                v = beta(alpha1, alpha3) * x**(alpha2-1) * y**(alpha1+alpha3-1) * (1-x-y)**(alpha4-1)
+                v *= appellf1(alpha1, 1-alpha2, 1-alpha4, alpha1+alpha3, y/x, y/(x+y-1), maxterms=2000)
+        else:
+            if x<y:
+                v = beta(alpha2, alpha4) * (1-x)**(alpha3-1) * (1-y)**(alpha2+alpha4-1) * (x+y-1)**(alpha1-1)
+                v *= appellf1(alpha4, 1-alpha1, 1-alpha3, alpha2+alpha4, (1-y)/(1-x-y), (1-y)/(1-x), maxterms=2000)
+            else:
+                v = beta(alpha3, alpha4) * (1-x)**(alpha3+alpha4-1) * (1-y)**(alpha2-1) * (x+y-1)**(alpha1-1)
+                v *= appellf1(alpha4, 1-alpha1, 1-alpha2, alpha3+alpha4, (1-x)/(1-x-y), (1-x)/(1-y), maxterms=2000)
+        return v/c
 
     def log_pdf(self, x, y, alpha = None, lb = 0, ub = 1):
         """
@@ -544,16 +584,4 @@ class BivariateBeta:
 
 if __name__ == '__main__':
 
-    true_alpha = np.array([1,1,1,1])
-    counter = np.zeros(4)
-    for i in range(100):
-        print(i)
-        U = np.random.dirichlet(true_alpha, size=50)
-        X = U[:,0] + U[:,1]
-        Y = U[:,0] + U[:,2]
-        distribution = BivariateBeta()
-        sample = distribution.bootstrap_method_parametric(X, Y, B=500, method=distribution.method_moments_estimator_1, 
-                                                        processes=4, seed=3217)
-        ci = distribution.confidence_interval(level=.95, samples=sample)
-        counter += (ci[0,:] < true_alpha)*(ci[1,:] > true_alpha)
-    print(counter)
+    pass
