@@ -10,8 +10,9 @@ the parameter alpha as explained in the notes.
 This script requires that `numpy`, `scipy` and `lintegrate` be installed within the Python 
 environment you are running. 
 """
+from importlib.metadata import distribution
 import numpy as np
-from scipy.special import gamma, loggamma, digamma, beta
+from scipy.special import gamma, loggamma, digamma, beta, hyp2f1
 from mpmath import appellf1
 from scipy.integrate import quad
 from scipy.optimize import minimize, minimize_scalar, root
@@ -19,7 +20,7 @@ from scipy.optimize import minimize, minimize_scalar, root
 from functools import partial
 import multiprocessing
 import matplotlib.pyplot as plt
-import time 
+from tqdm import tqdm
 
 class BivariateBeta:
     """
@@ -80,7 +81,7 @@ class BivariateBeta:
         
         lb = max(0,x+y-1)
         ub = min(x,y)
-        result = quad(self._integral_pdf, lb, ub, args = (x, y, self.alpha), epsabs=1e-10, limit=50)[0]
+        result = quad(self._integral_pdf, lb, ub, args = (x, y, self.alpha), epsabs=1e-10, limit=80)[0]
         return result/c
 
     def pdf_appell(self, x, y) -> float:
@@ -99,29 +100,44 @@ class BivariateBeta:
         alpha1, alpha2, alpha3, alpha4 = tuple(self.alpha)
 
         # supposition of continuity
-        if x == y:
-            y = x + 1e-10
         if x+y == 1:
             y=1-x+1e-10
 
         # normalizing constant
         c = gamma(self.alpha).prod()/gamma(self.alpha.sum())
 
-        if x+y<1:
-            if x<y:
-                v = beta(alpha1, alpha2) * x**(alpha1+alpha2-1) * y**(alpha3-1) * (1-x-y)**(alpha4-1)
-                v *= appellf1(alpha1, 1-alpha3, 1-alpha4, alpha1+alpha2, x/y, x/(x+y-1), maxterms=2000)
+        try:
+            if x+y<1:
+                if x<y:
+                    v = beta(alpha1, alpha2) * x**(alpha1+alpha2-1) * y**(alpha3-1) * (1-x-y)**(alpha4-1)
+                    v *= appellf1(alpha1, 1-alpha3, 1-alpha4, alpha1+alpha2, x/y, x/(x+y-1), maxterms=5000)
+                else:
+                    v = beta(alpha1, alpha3) * x**(alpha2-1) * y**(alpha1+alpha3-1) * (1-x-y)**(alpha4-1)
+                    v *= appellf1(alpha1, 1-alpha2, 1-alpha4, alpha1+alpha3, y/x, y/(x+y-1), maxterms=5000)
             else:
-                v = beta(alpha1, alpha3) * x**(alpha2-1) * y**(alpha1+alpha3-1) * (1-x-y)**(alpha4-1)
-                v *= appellf1(alpha1, 1-alpha2, 1-alpha4, alpha1+alpha3, y/x, y/(x+y-1), maxterms=2000)
+                if x<y:
+                    v = beta(alpha2, alpha4) * (1-x)**(alpha3-1) * (1-y)**(alpha2+alpha4-1) * (x+y-1)**(alpha1-1)
+                    v *= appellf1(alpha4, 1-alpha1, 1-alpha3, alpha2+alpha4, (1-y)/(1-x-y), (1-y)/(1-x), maxterms=5000)
+                else:
+                    v = beta(alpha3, alpha4) * (1-x)**(alpha3+alpha4-1) * (1-y)**(alpha2-1) * (x+y-1)**(alpha1-1)
+                    v *= appellf1(alpha4, 1-alpha1, 1-alpha2, alpha3+alpha4, (1-x)/(1-x-y), (1-x)/(1-y), maxterms=5000)
+        except ValueError:
+            v = self._analytic_continuation(min(x,y), alpha1, alpha2, alpha3, alpha4)
+        return float(v)/c
+
+    def _analytic_continuation(self, x, alpha1, alpha2, alpha3, alpha4):
+        """
+        Analytic continuation implementation for x=y.
+        """
+        if alpha2+alpha3 < 1:
+            raise Exception('The 2F1 function is not defined in this case as an integral.')
+        if x < 1/2:
+            v = beta(alpha1, alpha2+alpha3-1) * x**(alpha1+alpha2+alpha3-2) * (1-2*x)**(alpha4-1)
+            v *= hyp2f1(1-alpha4, alpha1, alpha1+alpha2+alpha3-1,x/(2*x-1))
         else:
-            if x<y:
-                v = beta(alpha2, alpha4) * (1-x)**(alpha3-1) * (1-y)**(alpha2+alpha4-1) * (x+y-1)**(alpha1-1)
-                v *= appellf1(alpha4, 1-alpha1, 1-alpha3, alpha2+alpha4, (1-y)/(1-x-y), (1-y)/(1-x), maxterms=2000)
-            else:
-                v = beta(alpha3, alpha4) * (1-x)**(alpha3+alpha4-1) * (1-y)**(alpha2-1) * (x+y-1)**(alpha1-1)
-                v *= appellf1(alpha4, 1-alpha1, 1-alpha2, alpha3+alpha4, (1-x)/(1-x-y), (1-x)/(1-y), maxterms=2000)
-        return v/c
+            v = beta(alpha4, alpha2+alpha3-1) * (1-x)**(alpha2+alpha3+alpha4-2) * (2*x-1)**(alpha1-1)
+            v *= hyp2f1(1-alpha1, alpha4, alpha2+alpha3+alpha4-1,(x-1)/(2*x-1))
+        return v
 
     def log_pdf(self, x, y, alpha = None, lb = 0, ub = 1):
         """
@@ -584,4 +600,9 @@ class BivariateBeta:
 
 if __name__ == '__main__':
 
-    pass
+    alpha = [0.2, 0.4, 0.1, 0.1]
+    distribution = BivariateBeta(alpha)
+
+    x,y = 0.4,0.4001
+    print(distribution.pdf(x,y))
+    print(distribution.pdf_appell(x,y))
