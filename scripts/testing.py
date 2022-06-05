@@ -1,7 +1,5 @@
 #usr/bin/env python3
 
-from tarfile import XGLTYPE
-from telnetlib import XDISPLOC
 import numpy as np
 from parameter_estimation import BivariateBeta
 import matplotlib.pyplot as plt
