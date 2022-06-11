@@ -282,7 +282,7 @@ class BivariateBeta:
         loss += c[2]*g(v1, alpha_12*alpha_34/div)
         loss += c[3]*g(v2, alpha_13*alpha_24/div)
         loss += c[4]*g(rho, (alpha[0]*alpha[3] - alpha[1]*alpha[2])/(np.sqrt(alpha_12*alpha_34*alpha_13*alpha_24)))
-        return loss
+        return np.log(loss)
 
     def _choose_loss_function(self, code='l2'):
         """
@@ -403,7 +403,7 @@ class BivariateBeta:
                                       {'type': 'ineq', 'fun': lambda x: (1-m2)*x[0] + (m1-m2)*x[1]}],
                          jac=derivative,
                          method='SLSQP',
-                         options={'ftol': 1e-7})
+                         options={'ftol': 1e-10})
         alpha_hat = np.ones(4)
         alpha_hat[2:] = result.x
         alpha_hat[:2] = self._system_two_solution(m1, m2, alpha_hat[2], alpha_hat[3])
