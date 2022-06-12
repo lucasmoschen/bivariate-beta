@@ -600,9 +600,20 @@ class BivariateBeta:
 
 if __name__ == '__main__':
 
-    alpha = [0.2, 0.4, 0.1, 0.1]
-    distribution = BivariateBeta(alpha)
+    # alpha = [0.2, 0.4, 0.1, 0.1]
+    # distribution = BivariateBeta(alpha)
 
-    x,y = 0.4,0.4001
-    print(distribution.pdf(x,y))
-    print(distribution.pdf_appell(x,y))
+    # x,y = 0.4,0.4001
+    # print(distribution.pdf(x,y))
+    # print(distribution.pdf_appell(x,y))
+
+    mu = np.array([-1,-1])
+    sigma = np.array([[1, -0.8], [-0.8, 1]])
+    sample_size = 10000
+
+    Z = np.random.multivariate_normal(mu, sigma, size=sample_size)
+    X = 1/(1 + np.exp(-Z[:, 0]))
+    Y = 1/(1 + np.exp(-Z[:, 1]))
+    print(X.mean(), Y.mean(), X.var(ddof=1), Y.var(ddof=1), np.corrcoef(X,Y)[0,1])
+    distribution = BivariateBeta()
+    print(distribution.method_moments_estimator_1(X, Y))

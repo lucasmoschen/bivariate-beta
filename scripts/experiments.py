@@ -164,7 +164,7 @@ def moments_logit_normal(mu, sigma):
     Z = np.random.multivariate_normal(mu, sigma, size=1000000)
     X = 1/(1 + np.exp(-Z))
     return np.array([X[:,0].mean(), X[:,1].mean(), 
-                     X[:,0].var(), X[:,1].var(), 
+                     X[:,0].var(ddof=1), X[:,1].var(ddof=1), 
                      np.corrcoef(X[:,0], X[:,1])[0,1]])
 
 def experiment_logitnormal(mu, sigma, sample_size, monte_carlo_size, seed):
@@ -199,9 +199,7 @@ def experiment_logitnormal(mu, sigma, sample_size, monte_carlo_size, seed):
         # Updating the estimates iteratively
         bias_new = est_moments - true_moments
         mse_new = bias_new * bias_new
-        mape_new = abs(bias_new)/true_moments
-
-        print(bias_new)
+        mape_new = abs(bias_new)/abs(true_moments)
 
         saving_document_2(filename, bias_new, mse_new, mape_new)
 
@@ -277,9 +275,41 @@ def comparing_methods(true_alpha, monte_carlo_size, bootstrap_size, seed):
     plt.savefig(os.path.join(ROOT_DIR, '../figures/comparing_methods_mape_bias_XXX.pdf'), bbox_inches='tight')
     plt.show()
 
+def comparing_methods2(mu1, mu2, sigma1, sigma2, sample_size, monte_carlo_size, seed):
+
+    filename1 = starting_experiment_2(mu1, sigma1, sample_size, monte_carlo_size, seed)
+    filename2 = starting_experiment_2(mu2, sigma2, sample_size, monte_carlo_size, seed)
+    with open(filename1, 'r') as f:
+        experiment1 = json.load(f)
+    with open(filename2, 'r') as f:
+        experiment2 = json.load(f)
+
+    values = [r'$m_1$', r'$m_2$', r'$v_1$', r'$v_2$', r'$\rho$']
+    mape1 = experiment1['mape'][3]
+    mape2 = experiment2['mape'][3]
+
+    fig, ax = plt.subplots(1,2)
+
+    ax[0].bar(values, mape1, color='black')
+    ax[1].bar(values, mape2, color='black')
+
+    ax[0].set_ylabel('MAPE')
+    ax[0].set_title('Experiment 1')
+    ax[1].set_title('Experiment 2')
+
+    # ax[0,0].ticklabel_format(axis='y', style='scientific', scilimits=(0,0))
+    # ax[1,0].ticklabel_format(axis='y', style='scientific', scilimits=(0,0))
+    # ax[0,1].ticklabel_format(axis='y', style='scientific', scilimits=(0,0))
+    # ax[1,1].ticklabel_format(axis='y', style='scientific', scilimits=(0,0))
+
+    fig.tight_layout() 
+    #plt.savefig(os.path.join(ROOT_DIR, '../figures/comparing_methods_mape_bias_XXX.pdf'), bbox_inches='tight')
+    plt.show()
+
+
 if __name__ == '__main__':
 
-    monte_carlo_size = 100
+    monte_carlo_size = 1000
     bootstrap_size = 500
 
     #true_alpha = np.array([1,1,1,1])
@@ -294,14 +324,17 @@ if __name__ == '__main__':
 
     #comparing_methods(true_alpha, monte_carlo_size, bootstrap_size, seed)
 
-    mu = np.array([0, 0])
-    sigma = np.array([[1, 0.1], [0.1, 1]])
+    mu2 = np.array([-1, -1])
+    sigma2 = np.array([[1, -0.8], [-0.8, 1]])
+    mu1 = np.array([0, 0])
+    sigma1 = np.array([[1, 0.1], [0.1, 1]])
     sample_size = 50
     seed = 63127371
 
-    print(moments_logit_normal(mu, sigma))
+    comparing_methods2(mu1, mu2, sigma1, sigma2, sample_size, monte_carlo_size, seed)
 
-    experiment_logitnormal(mu, sigma, sample_size, monte_carlo_size, seed)
+    #experiment_logitnormal(mu1, sigma1, sample_size, monte_carlo_size, seed)
+    #experiment_logitnormal(mu2, sigma2, sample_size, monte_carlo_size, seed)
 
     # rng = np.random.default_rng(seed)
     # distribution = BivariateBeta()
@@ -318,3 +351,15 @@ if __name__ == '__main__':
     #sample_size = 50
     #seed = 367219
     #variation_alpha4(true_alpha, sample_size, monte_carlo_size, seed)
+
+    # rho_true = moments_logit_normal(mu, sigma)[-1]
+    # rho_estimated = []
+    # for i in trange(1000):
+    #     Z = np.random.multivariate_normal(mu, sigma, size=sample_size)
+    #     X = 1/(1 + np.exp(-Z[:, 0]))
+    #     Y = 1/(1 + np.exp(-Z[:, 1]))
+    #     estimated_moments = np.array([X.mean(), Y.mean(), X.var(ddof=1), Y.var(ddof=1), np.corrcoef(X,Y)[0,1]])
+    #     rho_estimated.append(estimated_moments[-1])
+    # #plt.hist(rho_estimated, color='black', bins=25)
+    # print(np.mean(1*(np.array(rho_estimated) > 0.2) + 1*(np.array(rho_estimated) < 0)))
+    # plt.show()
