@@ -306,6 +306,40 @@ def comparing_methods2(mu1, mu2, sigma1, sigma2, sample_size, monte_carlo_size, 
     #plt.savefig(os.path.join(ROOT_DIR, '../figures/comparing_methods_mape_bias_XXX.pdf'), bbox_inches='tight')
     plt.show()
 
+def comparing_methods3(mu, sigma, sample_size, monte_carlo_size, seed):
+
+    filename = starting_experiment_2(mu, sigma, sample_size, monte_carlo_size, seed)
+    with open(filename, 'r') as f:
+        experiment = json.load(f)
+
+    ind = 2*np.arange(6) 
+    width = 0.35
+
+    _, ax = plt.subplots()
+
+    for i in range(4):
+        ax.bar(ind + i*width, 
+               np.hstack([experiment['bias'][i], np.mean(experiment['bias'][i])]), 
+               width=width)
+    ax.set_xticks(ind + width)
+    ax.set_xticklabels(('E[X]', 'E[Y]', 'Var(X)', 'Var(Y)', 'Cor(X,Y)', 'Average'))
+    ax.set_title('Bias estimate of the methods for the moments')
+    plt.savefig(os.path.join(ROOT_DIR, '../figures/bias_estimate_moments_logit_normal.pdf'), bbox_inches='tight')
+    plt.show()
+
+
+def comparing_exec_times(true_alpha, monte_carlo_size, bootstrap_size, seed):
+
+    filename = starting_experiment(true_alpha, 50, monte_carlo_size, bootstrap_size, seed)
+    with open(filename, 'r') as f:
+        experiment = json.load(f)
+
+    methods = ['MM1', 'MM2', 'MM3', 'MM4']
+    plt.bar(methods, experiment['comp'][:-1], color='black')
+    plt.ylabel('Time (s)')
+    plt.title('Comparing estimation runtime', fontsize=16)
+    plt.savefig(os.path.join(ROOT_DIR, '../figures/runtime_moments_methods.pdf'), bbox_inches='tight')
+    plt.show()
 
 if __name__ == '__main__':
 
@@ -318,48 +352,50 @@ if __name__ == '__main__':
     #sample_size = 50
     #seed = 3781288
     #experiment_bivbeta(true_alpha, sample_size, monte_carlo_size, bootstrap_size, seed, coverage=False)
-
     #sample_size = 1000
     #experiment_bivbeta(true_alpha, sample_size, monte_carlo_size, bootstrap_size, seed, coverage=False)
 
     #comparing_methods(true_alpha, monte_carlo_size, bootstrap_size, seed)
 
-    mu2 = np.array([-1, -1])
-    sigma2 = np.array([[1, -0.8], [-0.8, 1]])
-    mu1 = np.array([0, 0])
-    sigma1 = np.array([[1, 0.1], [0.1, 1]])
-    sample_size = 50
-    seed = 63127371
-
-    comparing_methods2(mu1, mu2, sigma1, sigma2, sample_size, monte_carlo_size, seed)
-
+    # mu2 = np.array([-1, -1])
+    # sigma2 = np.array([[1, -0.8], [-0.8, 1]])
+    # mu1 = np.array([0, 0])
+    # sigma1 = np.array([[1, 0.1], [0.1, 1]])
+    # sample_size = 50
+    # seed = 63127371
     #experiment_logitnormal(mu1, sigma1, sample_size, monte_carlo_size, seed)
     #experiment_logitnormal(mu2, sigma2, sample_size, monte_carlo_size, seed)
 
-    # rng = np.random.default_rng(seed)
-    # distribution = BivariateBeta()
-    # Z = rng.multivariate_normal(mu, sigma, size=sample_size)
-    # X = 1/(1 + np.exp(-Z[:, 0]))
-    # Y = 1/(1 + np.exp(-Z[:, 1]))
-    # print(X.mean(), Y.mean(), X.var(), Y.var(), np.corrcoef(X,Y)[0,1])
-
-    # alpha_hat1 = distribution.method_moments_estimator_1(X, Y)
-    # d = BivariateBeta(alpha=alpha_hat1)
-    # print(d.moments())
+    #comparing_methods2(mu1, mu2, sigma1, sigma2, sample_size, monte_carlo_size, seed)
 
     #true_alpha = np.array([2,4,3,1])
     #sample_size = 50
     #seed = 367219
     #variation_alpha4(true_alpha, sample_size, monte_carlo_size, seed)
 
+    # true_alpha = np.array([1,1,1,1])
+    # seed = 3781288
+    #comparing_exec_times(true_alpha, monte_carlo_size, bootstrap_size, seed)
+    
+    # mu = np.array([0, 0])
+    # sigma = np.array([[1, 0.1], [0.1, 1]])
     # rho_true = moments_logit_normal(mu, sigma)[-1]
     # rho_estimated = []
-    # for i in trange(1000):
-    #     Z = np.random.multivariate_normal(mu, sigma, size=sample_size)
-    #     X = 1/(1 + np.exp(-Z[:, 0]))
-    #     Y = 1/(1 + np.exp(-Z[:, 1]))
-    #     estimated_moments = np.array([X.mean(), Y.mean(), X.var(ddof=1), Y.var(ddof=1), np.corrcoef(X,Y)[0,1]])
-    #     rho_estimated.append(estimated_moments[-1])
-    # #plt.hist(rho_estimated, color='black', bins=25)
-    # print(np.mean(1*(np.array(rho_estimated) > 0.2) + 1*(np.array(rho_estimated) < 0)))
+    # Z = np.random.multivariate_normal(mu, sigma, size=(100000,sample_size))
+    # X = 1/(1 + np.exp(-Z[:, :, 0]))
+    # Y = 1/(1 + np.exp(-Z[:, :, 1]))
+    # rho_estimated = np.array([np.corrcoef(X[i], Y[i])[0,1] for i in range(X.shape[0])])
+    # plt.hist(rho_estimated, color='black', bins=50)
+    # plt.axvline(rho_estimated.mean(), color='red', label='mean={0:.{1}f}'.format(rho_estimated.mean(), 3), linestyle='--')
+    # plt.legend()
+    # plt.title('Sample distribution of the correlation')
+    # plt.savefig(os.path.join(ROOT_DIR, '../figures/sample_distribution_rho.pdf'), bbox_inches='tight')
     # plt.show()
+    # print(np.mean(1*(rho_estimated > 0.2) + 1*(rho_estimated < 0))
+
+    # mu = np.array([-1, -1])
+    # sigma = np.array([[1, -0.8], [-0.8, 1]])
+    # sample_size = 50
+    # seed = 63127371
+    # comparing_methods3(mu, sigma, sample_size, monte_carlo_size, seed)
+
