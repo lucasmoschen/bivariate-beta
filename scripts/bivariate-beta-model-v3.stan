@@ -5,8 +5,7 @@ functions {
    real log_bivariate_beta_lpdf(data matrix xy, array[] real alpha, vector u, int n){
       vector[n] x = col(xy, 1);
       vector[n] y = col(xy, 2);
-      real v = (alpha[2]-1) * sum(log(x-u)) + (alpha[3]-1) * sum(log(y-u)) + (alpha[4]-1) * sum(log1m(x+y-u));
-      v += (alpha[1]-1) * sum(log(u));
+      real v = sum((alpha[1]-1) * log(u) + (alpha[2]-1) * log(x-u) + (alpha[3]-1) * log(y-u) + (alpha[4]-1) * log1m(x+y-u));
       v += - n * log_multi_beta(alpha);
       return v;
    }
