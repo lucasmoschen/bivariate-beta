@@ -5,11 +5,8 @@ functions {
    real log_bivariate_beta_lpdf(data matrix xy, array[] real alpha, vector u, int n){
       vector[n] x = col(xy, 1);
       vector[n] y = col(xy, 2);
-      // log(x-u) = log(x(1-u/x)) = log(x) + log(1-u/x)
-      real v = (alpha[2]-1) * sum(log(x)+log1m(u./x));
-      v += (alpha[3]-1) * sum(log(y)+log1m(u./y));
-      v += (alpha[4]-1) * sum(log1m(x+y-u));
-      v +=  -(alpha[2]+alpha[3]+alpha[4]-1) * sum(log1m(u));
+      real v = (alpha[2]-1) * sum(log(x-u)) + (alpha[3]-1) * sum(log(y-u)) + (alpha[4]-1) * sum(log1m(x+y-u));
+      v += -(alpha[2]+alpha[3]+alpha[4]-1) * sum(log1m(u));
       v += - n * log_multi_beta(alpha[2:4]);
       return v;
    }
@@ -61,9 +58,7 @@ parameters {
 }
 model {
    if (prior_alpha==1) {
-      for (i in 1:4) {
-       alpha[i] ~ gamma(a[i], b[i]);
-      }
+      alpha ~ gamma(a, b);
    } else if (prior_alpha==2) {
       alpha ~ log_boojum(m, r);
    } else if (prior_alpha==3) {
