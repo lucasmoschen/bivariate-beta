@@ -26,7 +26,7 @@ def starting_experiment(true_alpha, sample_size, monte_carlo_size, bootstrap_siz
     Prepares the experiment file for the well-specified case, that is, the data comes from
     the Bivariate Beta distribution.
     """
-    filename = '../experiments/exp_' + '_'.join(str(e) for e in true_alpha) 
+    filename = '../../experiments/exp_' + '_'.join(str(e) for e in true_alpha) 
     filename += '_' + str(sample_size) + '_' + str(monte_carlo_size)
     filename += '_' + str(bootstrap_size) + '_' + str(seed) + '.json'
     filename = os.path.join(ROOT_DIR, filename)
@@ -42,7 +42,7 @@ def starting_experiment_2(mu, sigma, sample_size, monte_carlo_size, seed):
     """
     Prepares the experiment file.
     """
-    filename = '../experiments/exp_logit_' + '_'.join(str(e) for e in mu) + '_' + '_'.join(str(e) for e in sigma.flatten())
+    filename = '../../experiments/exp_logit_' + '_'.join(str(e) for e in mu) + '_' + '_'.join(str(e) for e in sigma.flatten())
     filename += '_' + str(sample_size) + '_' + str(monte_carlo_size)
     filename += '_' + str(seed) + '.json'
     filename = os.path.join(ROOT_DIR, filename)
@@ -203,199 +203,7 @@ def experiment_logitnormal(mu, sigma, sample_size, monte_carlo_size, seed):
 
         saving_document_2(filename, bias_new, mse_new, mape_new)
 
-def variation_alpha4(true_alpha, sample_size, monte_carlo_size, seed):
-    """
-    It does the experiments from Section "Recovering parameters from bivariate beta".
-    """
-    rng = np.random.default_rng(seed)
-    distribution = BivariateBeta()
-
-    moments_vs_alpha4 = np.zeros((monte_carlo_size, 6))
-
-    for k in trange(monte_carlo_size):
-        U = rng.dirichlet(true_alpha, size=sample_size)
-        X = U[:, 0] + U[:, 1]
-        Y = U[:, 0] + U[:, 2]
-
-        alpha_hat1 = distribution.method_moments_estimator_1(X, Y)
-
-        moments_vs_alpha4[k, 0] = X.mean()
-        moments_vs_alpha4[k, 1] = Y.mean()
-        moments_vs_alpha4[k, 2] = X.var(ddof=1)
-        moments_vs_alpha4[k, 3] = Y.var(ddof=1)
-        moments_vs_alpha4[k, 4] = np.corrcoef(X,Y)[0,1]
-        moments_vs_alpha4[k, 5] = alpha_hat1[2]
-
-    names = [r'$\hat{m}_1$', r'$\hat{m}_2$', r'$\hat{v}_1$', r'$\hat{v}_2$', r'$\hat{\rho}$']
-
-    fig, ax = plt.subplots(1, 5, figsize=(20,4), sharey=True)
-    fig.suptitle('Sensitivity analysis', fontsize=20)
-    for i in range(5):
-        ax[i].scatter(moments_vs_alpha4[:,i], moments_vs_alpha4[:,-1], s=1, color='black')
-        ax[i].set_xlabel(names[i], fontsize=14)
-    ax[0].set_ylabel(r'$\hat\alpha_4$', fontsize=14)
-
-    plt.savefig(os.path.join(ROOT_DIR, '../figures/sensibility_analysis_alpha3.pdf'), bbox_inches='tight')
-    plt.show()  
-
-def comparing_methods(true_alpha, monte_carlo_size, bootstrap_size, seed):
-
-    filename1 = starting_experiment(true_alpha, 50, monte_carlo_size, bootstrap_size, seed)
-    filename2 = starting_experiment(true_alpha, 1000, monte_carlo_size, bootstrap_size, seed)
-    with open(filename1, 'r') as f:
-        experiment1 = json.load(f)
-    with open(filename2, 'r') as f:
-        experiment2 = json.load(f)
-
-    methods = ['MM1', 'MM2', 'MM3', 'MM4']
-
-    bias1 = [np.mean(np.abs(experiment1['bias'][i])) for i in range(4)]
-    mape1 = [np.mean(experiment1['mape'][i]) for i in range(4)]
-    bias2 = [np.mean(np.abs(experiment2['bias'][i])) for i in range(4)]
-    mape2 = [np.mean(experiment2['mape'][i]) for i in range(4)]
-
-    fig, ax = plt.subplots(2,2)
-
-    ax[0,0].bar(methods, mape1, color='black')
-    ax[0,1].bar(methods, bias1, color='black')
-    ax[1,0].bar(methods, mape2, color='black')
-    ax[1,1].bar(methods, bias2, color='black')
-
-    ax[0,0].set_ylabel(r'$n=50$')
-    ax[1,0].set_ylabel(r'$n=1000$')
-    ax[0,0].set_title('Average MAPE')
-    ax[0,1].set_title('Average absolute bias')
-
-    ax[0,0].ticklabel_format(axis='y', style='scientific', scilimits=(0,0))
-    ax[1,0].ticklabel_format(axis='y', style='scientific', scilimits=(0,0))
-    ax[0,1].ticklabel_format(axis='y', style='scientific', scilimits=(0,0))
-    ax[1,1].ticklabel_format(axis='y', style='scientific', scilimits=(0,0))
-
-    fig.tight_layout() 
-    plt.savefig(os.path.join(ROOT_DIR, '../figures/comparing_methods_mape_bias_XXX.pdf'), bbox_inches='tight')
-    plt.show()
-
-def comparing_methods2(mu1, mu2, sigma1, sigma2, sample_size, monte_carlo_size, seed):
-
-    filename1 = starting_experiment_2(mu1, sigma1, sample_size, monte_carlo_size, seed)
-    filename2 = starting_experiment_2(mu2, sigma2, sample_size, monte_carlo_size, seed)
-    with open(filename1, 'r') as f:
-        experiment1 = json.load(f)
-    with open(filename2, 'r') as f:
-        experiment2 = json.load(f)
-
-    values = [r'$m_1$', r'$m_2$', r'$v_1$', r'$v_2$', r'$\rho$']
-    mape1 = experiment1['mape'][3]
-    mape2 = experiment2['mape'][3]
-
-    fig, ax = plt.subplots(1,2)
-
-    ax[0].bar(values, mape1, color='black')
-    ax[1].bar(values, mape2, color='black')
-
-    ax[0].set_ylabel('MAPE')
-    ax[0].set_title('Experiment 1')
-    ax[1].set_title('Experiment 2')
-
-    # ax[0,0].ticklabel_format(axis='y', style='scientific', scilimits=(0,0))
-    # ax[1,0].ticklabel_format(axis='y', style='scientific', scilimits=(0,0))
-    # ax[0,1].ticklabel_format(axis='y', style='scientific', scilimits=(0,0))
-    # ax[1,1].ticklabel_format(axis='y', style='scientific', scilimits=(0,0))
-
-    fig.tight_layout() 
-    #plt.savefig(os.path.join(ROOT_DIR, '../figures/comparing_methods_mape_bias_XXX.pdf'), bbox_inches='tight')
-    plt.show()
-
-def comparing_methods3(mu, sigma, sample_size, monte_carlo_size, seed):
-
-    filename = starting_experiment_2(mu, sigma, sample_size, monte_carlo_size, seed)
-    with open(filename, 'r') as f:
-        experiment = json.load(f)
-
-    ind = 2*np.arange(6) 
-    width = 0.35
-
-    _, ax = plt.subplots()
-
-    for i in range(4):
-        ax.bar(ind + i*width, 
-               np.hstack([experiment['bias'][i], np.mean(experiment['bias'][i])]), 
-               width=width)
-    ax.set_xticks(ind + width)
-    ax.set_xticklabels(('E[X]', 'E[Y]', 'Var(X)', 'Var(Y)', 'Cor(X,Y)', 'Average'))
-    ax.set_title('Bias estimate of the methods for the moments')
-    plt.savefig(os.path.join(ROOT_DIR, '../figures/bias_estimate_moments_logit_normal.pdf'), bbox_inches='tight')
-    plt.show()
-
-
-def comparing_exec_times(true_alpha, monte_carlo_size, bootstrap_size, seed):
-
-    filename = starting_experiment(true_alpha, 50, monte_carlo_size, bootstrap_size, seed)
-    with open(filename, 'r') as f:
-        experiment = json.load(f)
-
-    methods = ['MM1', 'MM2', 'MM3', 'MM4']
-    plt.bar(methods, experiment['comp'][:-1], color='black')
-    plt.ylabel('Time (s)')
-    plt.title('Comparing estimation runtime', fontsize=16)
-    plt.savefig(os.path.join(ROOT_DIR, '../figures/runtime_moments_methods.pdf'), bbox_inches='tight')
-    plt.show()
-
 if __name__ == '__main__':
 
     monte_carlo_size = 1000
     bootstrap_size = 500
-
-    #true_alpha = np.array([1,1,1,1])
-    #true_alpha = np.array([2,7,3,1])
-    #true_alpha = np.array([0.7,0.9,2,1.5])
-    #sample_size = 50
-    #seed = 3781288
-    #experiment_bivbeta(true_alpha, sample_size, monte_carlo_size, bootstrap_size, seed, coverage=False)
-    #sample_size = 1000
-    #experiment_bivbeta(true_alpha, sample_size, monte_carlo_size, bootstrap_size, seed, coverage=False)
-
-    #comparing_methods(true_alpha, monte_carlo_size, bootstrap_size, seed)
-
-    # mu2 = np.array([-1, -1])
-    # sigma2 = np.array([[1, -0.8], [-0.8, 1]])
-    # mu1 = np.array([0, 0])
-    # sigma1 = np.array([[1, 0.1], [0.1, 1]])
-    # sample_size = 50
-    # seed = 63127371
-    #experiment_logitnormal(mu1, sigma1, sample_size, monte_carlo_size, seed)
-    #experiment_logitnormal(mu2, sigma2, sample_size, monte_carlo_size, seed)
-
-    #comparing_methods2(mu1, mu2, sigma1, sigma2, sample_size, monte_carlo_size, seed)
-
-    #true_alpha = np.array([2,4,3,1])
-    #sample_size = 50
-    #seed = 367219
-    #variation_alpha4(true_alpha, sample_size, monte_carlo_size, seed)
-
-    # true_alpha = np.array([1,1,1,1])
-    # seed = 3781288
-    #comparing_exec_times(true_alpha, monte_carlo_size, bootstrap_size, seed)
-    
-    # mu = np.array([0, 0])
-    # sigma = np.array([[1, 0.1], [0.1, 1]])
-    # rho_true = moments_logit_normal(mu, sigma)[-1]
-    # rho_estimated = []
-    # Z = np.random.multivariate_normal(mu, sigma, size=(100000,sample_size))
-    # X = 1/(1 + np.exp(-Z[:, :, 0]))
-    # Y = 1/(1 + np.exp(-Z[:, :, 1]))
-    # rho_estimated = np.array([np.corrcoef(X[i], Y[i])[0,1] for i in range(X.shape[0])])
-    # plt.hist(rho_estimated, color='black', bins=50)
-    # plt.axvline(rho_estimated.mean(), color='red', label='mean={0:.{1}f}'.format(rho_estimated.mean(), 3), linestyle='--')
-    # plt.legend()
-    # plt.title('Sample distribution of the correlation')
-    # plt.savefig(os.path.join(ROOT_DIR, '../figures/sample_distribution_rho.pdf'), bbox_inches='tight')
-    # plt.show()
-    # print(np.mean(1*(rho_estimated > 0.2) + 1*(rho_estimated < 0))
-
-    # mu = np.array([-1, -1])
-    # sigma = np.array([[1, -0.8], [-0.8, 1]])
-    # sample_size = 50
-    # seed = 63127371
-    # comparing_methods3(mu, sigma, sample_size, monte_carlo_size, seed)
-

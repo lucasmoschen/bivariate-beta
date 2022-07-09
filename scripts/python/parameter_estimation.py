@@ -10,17 +10,18 @@ the parameter alpha as explained in the notes.
 This script requires that `numpy`, `scipy` and `lintegrate` be installed within the Python 
 environment you are running. 
 """
-from importlib.metadata import distribution
 import numpy as np
 from scipy.special import gamma, loggamma, digamma, beta, hyp2f1
 from mpmath import appellf1
 from scipy.integrate import quad
 from scipy.optimize import minimize, minimize_scalar, root
-#import lintegrate
 from functools import partial
 import multiprocessing
-import matplotlib.pyplot as plt
-from tqdm import tqdm
+
+# import matplotlib.pyplot as plt
+# from tqdm import tqdm
+# import lintegrate
+
 
 class BivariateBeta:
     """
@@ -329,7 +330,7 @@ class BivariateBeta:
     def method_moments_estimator_2(self, x, y, accept_zero=True):
         """
         Method of moments estimator of parameter alpha given the bivariate data (x,y) of size n.
-        This method (MM2) solves the system with three euations (m1, m2 and rho) and chooses alpha4 
+        This method (MM2) solves the system with three equations (m1, m2 and rho) and chooses alpha4 
         as the value to minimize the quadratic difference to the variances.
         Parameters
         | x (n-array): data in the first component
