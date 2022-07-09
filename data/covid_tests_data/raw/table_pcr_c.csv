@@ -1,0 +1,2 @@
+Study,TP,FP,FN,TN,Sensitivity [95% CI],Specificity [95% CI]
+80867150015,92,2,14,218,"0,87 [0,79, 0,93]","0,99 [0,97, 1,00]"
