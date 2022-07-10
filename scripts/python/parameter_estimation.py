@@ -353,11 +353,9 @@ class BivariateBeta:
                 return np.ones(4) * np.nan
 
         alpha_hat = self._system_three_solution(m1, m2, rho)
-        alpha_sum = lambda alpha4: alpha4/((1-m1)*(1-m2) + rho*denominator)
-
-        func_to_min = lambda alpha4: (v1 - m1*(1-m1)/(alpha_sum(alpha4) + 1))**2 + (v2 - m2*(1-m2)/(alpha_sum(alpha4) + 1))**2
-        result = minimize_scalar(fun=func_to_min, bounds=(0, np.inf))
-        alpha_hat = alpha_hat * result.x
+        # minimizing the sum of squares comparing the sum of alphas and its model value.
+        alpha4 = ((1-m1)*(1-m2) + rho*denominator) * ((m1*(1-m1)/v1 + m2*(1-m2)/v2)/2 - 1)
+        alpha_hat = alpha4 * alpha_hat
         return np.maximum(alpha_hat, 0)
 
     def method_moments_estimator_3(self, x, y, alpha0):
@@ -601,20 +599,11 @@ class BivariateBeta:
 
 if __name__ == '__main__':
 
-    # alpha = [0.2, 0.4, 0.1, 0.1]
-    # distribution = BivariateBeta(alpha)
-
-    # x,y = 0.4,0.4001
-    # print(distribution.pdf(x,y))
-    # print(distribution.pdf_appell(x,y))
-
-    mu = np.array([-1,-1])
-    sigma = np.array([[1, -0.8], [-0.8, 1]])
-    sample_size = 10000
-
-    Z = np.random.multivariate_normal(mu, sigma, size=sample_size)
-    X = 1/(1 + np.exp(-Z[:, 0]))
-    Y = 1/(1 + np.exp(-Z[:, 1]))
-    print(X.mean(), Y.mean(), X.var(ddof=1), Y.var(ddof=1), np.corrcoef(X,Y)[0,1])
+    true_alpha = np.array([1,1,1,1])
+    np.random.seed(0)
+    U = np.random.dirichlet(true_alpha, size=1000)
+    X = U[:,0] + U[:,1]
+    Y = U[:,0] + U[:,2]
+    
     distribution = BivariateBeta()
-    print(distribution.method_moments_estimator_1(X, Y))
+    print(distribution.method_moments_estimator_2(X, Y))

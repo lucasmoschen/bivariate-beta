@@ -26,7 +26,9 @@ if __name__ == '__main__':
     alpha2 = (1 - m2)/(1 - m1) * alpha3 + (m1 - m2)/(1 - m1) * alpha4
     alpha_sum = sp.simplify(alpha1 + alpha2 + alpha3 + alpha4)
     expression = rho - (alpha1 * alpha4 - alpha2 * alpha3) / (alpha_sum**2 * sp.sqrt(m1 * m2 * (1-m1) * (1 - m2)))
-    alpha3 = sp.simplify(sp.solve(expression, alpha3)[0])
+    solving = sp.solve(expression, alpha3)
+    print('Number of solutions = {}'.format(len(solving)))
+    alpha3 = sp.simplify(solving[0])
     alpha1 = sp.simplify((m1 + m2 - 1)/(1 - m1) * alpha3 + m2/(1 - m1) * alpha4)
     alpha2 = sp.simplify((1 - m2)/(1 - m1) * alpha3 + (m1 - m2)/(1 - m1) * alpha4)
     print('alpha1 = {}'.format(alpha1))
