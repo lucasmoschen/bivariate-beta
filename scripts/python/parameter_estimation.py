@@ -376,30 +376,28 @@ class BivariateBeta:
         v1 = np.var(x, ddof=1)
         v2 = np.var(y, ddof=1)
         rho = np.corrcoef(x, y)[0,1]
+        E = m2*(1-m1) - rho * np.sqrt(m1*m2*(1-m1)*(1-m2))
 
-        def func_to_min(alphas):
+        def func_to_min(alphas, E):
             alpha3, alpha4 = tuple(alphas)
             alpha_sum = (alpha3 + alpha4) / (1 - m1)
-            loss = (v1 - m1*(1-m1)/(alpha_sum + 1))**2 
-            loss += (v2 - m2*(1-m2)/(alpha_sum + 1))**2
-            #loss += (rho - (alpha1 * alpha4 - alpha2 * alpha3)/(alpha_sum**2 * np.sqrt(m1*m2*(1-m1)*(1-m2))))**2
-            loss += (rho - (m2 - alpha3/(alpha3+alpha4)) * (1-m1) / np.sqrt(m1*m2*(1-m1)*(1-m2)))**2
+            loss = (alpha_sum - m1*(1-m1)/v1 + 1)**2
+            loss += (alpha_sum - m2*(1-m2)/v2 + 1)**2
+            loss += (E * alpha_sum - alpha3)**2
             return loss
         
-        def derivative(alphas):
+        def derivative(alphas, E):
             alpha3, alpha4 = tuple(alphas)
-            alpha_sum = (alpha3 + alpha4) / (1 - m1)
-            grad_alpha3 = (v1 - m1*(1-m1)/(alpha_sum + 1)) * m1 / (alpha_sum+1)**2
-            grad_alpha3 += (v2 - m2*(1-m2)/(alpha_sum + 1)) * m2 * (1 - m2) / (1 - m1) / (alpha_sum+1)**2
+            alpha_sum = (alpha3 + alpha4) / (1-m1)
+            grad_alpha3 = (2*alpha_sum - m1*(1-m1)/v1 - m2*(1-m2)/v2 + 2) + (E * alpha_sum - alpha3) * E
             grad_alpha4 = grad_alpha3
-            c = (1-m1) / np.sqrt(m1*m2*(1-m1)*(1-m2))
-            grad_alpha3 += (rho - c * (m2 - alpha3/(alpha3+alpha4))) * c * alpha4 / (alpha3+alpha4) ** 2
-            grad_alpha4 += (rho - c * (m2 - alpha3/(alpha3+alpha4))) * (-c) * alpha3 / (alpha3+alpha4) ** 2
-            return 2 * np.array([grad_alpha3, grad_alpha4])
+            grad_alpha3 -= (E * alpha_sum - alpha3) * (1-m1)
+            return 2*np.array([grad_alpha3, grad_alpha4])/(1-m1)
             
         result = minimize(fun=func_to_min, bounds=[(0, np.inf)]*2, x0=alpha0,
                          constraints=[{'type': 'ineq', 'fun': lambda x: (m1+m2-1)*x[0] + m2*x[1]}, 
                                       {'type': 'ineq', 'fun': lambda x: (1-m2)*x[0] + (m1-m2)*x[1]}],
+                         args = (E,),
                          jac=derivative,
                          method='SLSQP',
                          options={'ftol': 1e-10})
