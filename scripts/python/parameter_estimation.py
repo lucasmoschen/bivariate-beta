@@ -19,7 +19,7 @@ from functools import partial
 import multiprocessing
 
 # import matplotlib.pyplot as plt
-# from tqdm import tqdm
+from tqdm import tqdm
 # import lintegrate
 
 
@@ -598,10 +598,22 @@ class BivariateBeta:
 if __name__ == '__main__':
 
     true_alpha = np.array([1,1,1,1])
-    np.random.seed(0)
-    U = np.random.dirichlet(true_alpha, size=1000)
-    X = U[:,0] + U[:,1]
-    Y = U[:,0] + U[:,2]
-    
-    distribution = BivariateBeta()
-    print(distribution.method_moments_estimator_2(X, Y))
+    n = 50
+    rho_samples = np.zeros(10000)
+    for i in tqdm(range(rho_samples.shape[0])):
+        U = np.random.dirichlet(true_alpha, size=n)
+        X = U[:,0] + U[:,1]
+        Y = U[:,0] + U[:,2]
+        rho = np.corrcoef(X,Y)[0,1]
+        rho_samples[i] = rho
+    print(np.quantile(rho_samples, q=[0.05, 0.9]))
+
+    n = 50
+    rho_samples = np.zeros(10000)
+    for i in tqdm(range(rho_samples.shape[0])):
+        U = 1/(1 + np.exp(-np.random.multivariate_normal(mean=[0,0], cov=[[1,0.0], [0.0, 1]], size=n)))
+        X = U[:,0]
+        Y = U[:,1]
+        rho = np.corrcoef(X,Y)[0,1]
+        rho_samples[i] = rho
+    print(np.quantile(rho_samples, q=[0.05, 0.9]))
