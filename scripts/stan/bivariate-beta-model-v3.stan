@@ -5,8 +5,8 @@ functions {
    real log_bivariate_beta_lpdf(data matrix xy, array[] real alpha, vector u, int n){
       vector[n] x = col(xy, 1);
       vector[n] y = col(xy, 2);
-      real v = (alpha[1]-1) * sum(log(u)) + (alpha[2]-1) * sum(log(x)+log1m(u./x));
-      v+= (alpha[3]-1) * sum(log(y)+log1m(u./y)) + (alpha[4]-1) * sum(log1m(x+y-u));
+      real v = (alpha[1]-1) * sum(log(u)) + (alpha[2]-1) * sum(log(x-u));
+      v+= (alpha[3]-1) * sum(log(y-u)) + (alpha[4]-1) * sum(log1m(x+y-u));
       v += -n * log_multi_beta(alpha);
       return v;
    }
@@ -28,10 +28,13 @@ transformed data {
 }
 parameters {
    array[4] real<lower=0> alpha;
-   vector<lower=lb, upper=ub>[n] u;
+   vector<lower=0, upper=1>[n] u_raw;
+}
+transformed parameters {
+   vector<lower=lb, upper=ub>[n] u = (ub - lb) .* u_raw + lb;
 }
 model {
     alpha ~ gamma(a, b);
-    u ~ uniform(lb, ub);
+    u_raw ~ uniform(0, 1);
     xy ~ log_bivariate_beta(alpha, u, n);
 }
