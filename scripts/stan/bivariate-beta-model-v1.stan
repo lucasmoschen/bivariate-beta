@@ -1,6 +1,6 @@
 functions {
    real log_multi_beta(array[] real theta){
-       return lgamma(theta[1]) + lgamma(theta[2]) + lgamma(theta[3]) + lgamma(theta[4]) - lgamma(sum(theta));
+       return sum(lgamma(theta)) - lgamma(sum(theta));
    }
    real integrand(real x, real xc, array[] real theta, array[] real x_r, array[] int x_i){
        real s = x_r[1];
@@ -37,8 +37,8 @@ functions {
        }
        return v;
     }
-    real log_bivariate_beta_lpdf(data array[] real xy, array[] real alpha, real lb, real ub, array[] int x_i, data real tolerance){
-       return log(integrate_1d(integrand, lb, ub, alpha, xy, x_i, tolerance)) - log_multi_beta(alpha);
+    real log_bivariate_beta_lpdf(data array[] real xy, array[] real alpha, data real lb, data real ub, data array[] int x_i, data real tolerance){
+       return log(integrate_1d(integrand, lb, ub, alpha, xy, x_i, tolerance));
     }
 }
 data {
@@ -61,10 +61,9 @@ parameters {
    array[4] real<lower=0> alpha;
 }
 model {
-    for (i in 1:4) {
-       alpha[i] ~ gamma(a[i], b[i]);
-    }
+    target += gamma_lpdf(alpha | a, b);
     for(i in 1:n){
-        xy[i] ~ log_bivariate_beta(alpha, lb[i], ub[i], x_i, tolerance);
+        target += log_bivariate_beta_lpdf(xy[i] | alpha, lb[i], ub[i], x_i, tolerance);
     }
+    target += -n * log_multi_beta(alpha);
 }
