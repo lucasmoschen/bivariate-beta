@@ -2,12 +2,12 @@ functions {
    real log_multi_beta(vector theta){
        return sum(lgamma(theta)) - lgamma(sum(theta));
    }
-   real log_bivariate_beta_lpdf(data matrix xy, vector alpha, vector u, data int n){
+   real log_bivariate_beta_lpdf(data matrix xy, vector alpha_log, vector u, data int n){
       vector[n] x = col(xy, 1);
       vector[n] y = col(xy, 2);
-      real v = sum(lmultiply(alpha[1]-1, u) + lmultiply(alpha[2]-1, x-u));
-      v += sum(lmultiply(alpha[3]-1, y-u) + (alpha[4]-1) * log1m(x+y-u));
-      v += -n * log_multi_beta(alpha);
+      real v = expm1(alpha_log[1]) * sum(log(u)) + expm1(alpha_log[2]) * sum(log(x-u));
+      v += expm1(alpha_log[3]) * sum(log(y-u)) + expm1(alpha_log[4]) * sum(log1m(x+y-u));
+      v += -n * log_multi_beta(exp(alpha_log));
       return v;
    }
 }
@@ -27,14 +27,14 @@ transformed data {
    }
 }
 parameters {
-   vector<lower=0>[4] alpha;
+   vector[4] alpha_log;
    vector<lower=0, upper=1>[n] u_raw;
 }
 transformed parameters {
    vector[n] u = (ub - lb) .* u_raw + lb;
 }
 model {
-    alpha ~ gamma(a, b);
-    u_raw ~ uniform(0, 1);
-    xy ~ log_bivariate_beta(alpha, u, n);
+    // prior
+    target += a .* alpha_log - b .* exp(alpha_log);
+    target += log_bivariate_beta_lpdf(xy | alpha_log, u, n);
 }

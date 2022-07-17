@@ -5,27 +5,28 @@ library("dplyr")
 options(mc.cores = parallel::detectCores())
 
 true_alpha <- c(2.5,0.1,1.9,1.7)
-n <- 10
-U1 <- rgamma(n=n, shape=true_alpha[1], rate=1)
-U2 <- rgamma(n=n, shape=true_alpha[2], rate=1)
-U3 <- rgamma(n=n, shape=true_alpha[3], rate=1)
-U4 <- rgamma(n=n, shape=true_alpha[4], rate=1)
-U <- (U1)/(U1 + U2 + U3  + U4)
-X <- (U1 + U2)/(U1 + U2 + U3  + U4)
-Y <- (U1 + U3)/(U1 + U2 + U3  + U4)
+n <- 50
+
+Z1 = rbeta(n=n, sum(true_alpha[2:4]), true_alpha[1])
+Z2 = rbeta(n=n, sum(true_alpha[3:4]), true_alpha[2])
+Z3 = rbeta(n=n, true_alpha[4], true_alpha[3])
+U = 1 - Z1
+X = 1 - Z1*Z2
+Y = 1 - Z1 + Z1*Z2*(1-Z3)
 XY <- cbind(X,Y)
 
 a <- c(1,1,1,1)
 b <- c(1,1,1,1)
 
 data <- list(n = n,
+             u = U,
              xy = XY,
              a = a,
              b = b,
              tolerance=1e-8)
 
 mod <- stan_model(file="Documents/GitHub/bivariate-beta/scripts/stan/bivariate-beta-model-v3.stan")
-fit <- sampling(mod, data=data, warmup=1000, iter=2000, control=list(adapt_delta=0.95))
+fit <- sampling(mod, data=data, warmup=1000, iter=2000)
 
 # Optional visualizations
 
