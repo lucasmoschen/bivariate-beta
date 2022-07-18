@@ -7,7 +7,7 @@ options(mc.cores = parallel::detectCores())
 true_alpha <- c(2.5, 0.1, 1.9, 1.7)
 n <- 1
 U1 <- rbeta(n=n, shape1=2.5, shape2=0.1)
-U2 <- rbeta(n=1, shape1=1.9, shape2=1.7)
+U2 <- rbeta(n=n, shape1=1.9, shape2=1.7)
 
 data <- list(x = U1 + U2,
              a = 2.5,
