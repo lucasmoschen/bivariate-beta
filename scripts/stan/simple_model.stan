@@ -1,0 +1,15 @@
+data {
+   real<lower=0, upper=2> x;
+   
+   real<lower=0> a;
+   real<lower=0> b;
+   real<lower=0> c;
+   real<lower=0> d;
+}
+parameters {
+   real<lower=0, upper=x> u;
+}
+model {
+    target += beta_lpdf(u | a,b);
+    target += beta_lpdf(x-u | c,d);
+}
