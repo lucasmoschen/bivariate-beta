@@ -5,7 +5,7 @@ library("dplyr")
 options(mc.cores = parallel::detectCores())
 
 true_alpha <- c(2.5,0.1,1.9,1.7)
-n <- 1
+n <- 2
 
 set.seed(2108)
 Z1 = rbeta(n=n, sum(true_alpha[2:4]), true_alpha[1])
@@ -19,7 +19,8 @@ XY <- cbind(X,Y)
 a <- c(1,1,1,1)
 b <- c(1,1,1,1)
 
-data <- list(alpha = true_alpha,
+data <- list(n = n,
+             alpha = true_alpha,
              x = X,
              y = Y)
 
