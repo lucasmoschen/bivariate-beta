@@ -4,7 +4,7 @@ library("dplyr")
 
 options(mc.cores = parallel::detectCores())
 
-true_alpha <- c(2.5,1.0,1.9,1.7)
+true_alpha <- c(2.5,0.1,1.9,1.7)
 n <- 1
 
 set.seed(2108)
@@ -19,14 +19,11 @@ XY <- cbind(X,Y)
 a <- c(1,1,1,1)
 b <- c(1,1,1,1)
 
-data <- list(n = n,
-             alpha = true_alpha,
-             xy = XY,
-             a = a,
-             b = b,
-             tolerance=1e-8)
+data <- list(alpha = true_alpha,
+             x = X,
+             y = Y)
 
-mod <- stan_model(file="Documents/GitHub/bivariate-beta/scripts/stan/bivariate-beta-model-v9.stan")
+mod <- stan_model(file="Documents/GitHub/bivariate-beta/scripts/stan/bivariate-beta-model-v10.stan")
 fit <- sampling(mod, data=data, warmup=1000, iter=2000, seed=8920)
 
 # Optional visualizations
