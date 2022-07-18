@@ -1,3 +1,7 @@
+// Bivariate beta model 
+// Estimate the parameter alpha 
+// The Dirichlet distribution is written as the product of beta (paper Betacourt)
+
 functions {
    real log_multi_beta(array[] real theta){
        return sum(lgamma(theta)) - lgamma(sum(theta));

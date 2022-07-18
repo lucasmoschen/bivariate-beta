@@ -1,3 +1,7 @@
+// Bivariate beta model 
+// Estimate the parameter alpha 
+// The variable U is used as a latent variable with uniform prior.
+
 functions {
    real log_multi_beta(vector theta){
        return sum(lgamma(theta)) - lgamma(sum(theta));

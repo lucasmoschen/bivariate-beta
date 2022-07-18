@@ -4,9 +4,10 @@ library("dplyr")
 
 options(mc.cores = parallel::detectCores())
 
-true_alpha <- c(2.5,0.1,1.9,1.7)
-n <- 50
+true_alpha <- c(2.5,1.0,1.9,1.7)
+n <- 1
 
+set.seed(2108)
 Z1 = rbeta(n=n, sum(true_alpha[2:4]), true_alpha[1])
 Z2 = rbeta(n=n, sum(true_alpha[3:4]), true_alpha[2])
 Z3 = rbeta(n=n, true_alpha[4], true_alpha[3])
@@ -19,14 +20,14 @@ a <- c(1,1,1,1)
 b <- c(1,1,1,1)
 
 data <- list(n = n,
-             u = U,
+             alpha = true_alpha,
              xy = XY,
              a = a,
              b = b,
              tolerance=1e-8)
 
-mod <- stan_model(file="Documents/GitHub/bivariate-beta/scripts/stan/bivariate-beta-model-v3.stan")
-fit <- sampling(mod, data=data, warmup=1000, iter=2000)
+mod <- stan_model(file="Documents/GitHub/bivariate-beta/scripts/stan/bivariate-beta-model-v9.stan")
+fit <- sampling(mod, data=data, warmup=1000, iter=2000, seed=8920)
 
 # Optional visualizations
 

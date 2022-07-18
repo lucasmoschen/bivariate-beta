@@ -1,3 +1,7 @@
+// Bivariate beta model 
+// Estimate the parameter alpha and U
+// Here alpha is treated in the log scale.
+
 functions {
    real log_multi_beta(vector theta){
        return sum(lgamma(theta)) - lgamma(sum(theta));

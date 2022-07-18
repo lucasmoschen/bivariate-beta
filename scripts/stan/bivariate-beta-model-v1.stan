@@ -1,3 +1,7 @@
+// Bivariate beta model 
+// Estimate the parameter alpha 
+// The likelihood function depends on an integration
+
 functions {
    real log_multi_beta(array[] real theta){
        return sum(lgamma(theta)) - lgamma(sum(theta));

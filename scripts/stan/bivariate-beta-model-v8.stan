@@ -1,3 +1,7 @@
+// Bivariate beta model 
+// Estimate the parameter alpha 
+// The variable U is fixed here.
+
 functions {
    real log_multi_beta(vector theta){
        return sum(lgamma(theta)) - lgamma(sum(theta));
