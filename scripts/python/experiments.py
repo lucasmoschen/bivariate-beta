@@ -12,6 +12,7 @@ This script requires that `numpy`, `scipy`, `lintegrate` and `tqdm` be installed
 environment you are running. 
 """
 
+from random import sample
 import matplotlib.pyplot as plt
 import numpy as np
 from parameter_estimation import BivariateBeta
@@ -127,26 +128,26 @@ def experiment_bivbeta(true_alpha, sample_size, monte_carlo_size, bootstrap_size
         t0 = time()
         alpha_hat4 = distribution.method_moments_estimator_4(X, Y, alpha0=(1, 1, 1, 1))
         time4 = time() - t0
-        t0 = time()
-        alpha_hat5 = distribution.modified_maximum_likelihood_estimator(X, Y, x0=(2, 2, 4))
-        time5 = time() - t0
-        alpha = np.array([alpha_hat1, alpha_hat2, alpha_hat3, alpha_hat4, alpha_hat5])
+        #t0 = time()
+        #alpha_hat5 = distribution.modified_maximum_likelihood_estimator(X, Y, x0=(2, 2, 4))
+        #time5 = time() - t0
+        alpha = np.array([alpha_hat1, alpha_hat2, alpha_hat3, alpha_hat4])#, alpha_hat5])
 
         # Updating the estimates iteratively
         bias_new = alpha - true_alpha
         mse_new = bias_new * bias_new
         mape_new = abs(bias_new)/true_alpha
-        comp_new = np.array([time1, time2, time3, time4, time5])
+        comp_new = np.array([time1, time2, time3, time4])#, time5])
 
         if coverage:
 
             methods = [distribution.method_moments_estimator_1, distribution.method_moments_estimator_2, 
-                       distribution.method_moments_estimator_3, distribution.method_moments_estimator_4, 
+                       distribution.method_moments_estimator_3, distribution.method_moments_estimator_4,
                        distribution.modified_maximum_likelihood_estimator]
             alpha0_parameters = [None, None, (1,1), (1,1,1,1), None]
             x0_parameters = [None, None, None, None, (2,2,4)]
 
-            for ind in range(5):
+            for ind in range(4):
                 samples = distribution.bootstrap_method(x=X, y=Y, 
                                                         B=bootstrap_size,
                                                         method=methods[ind],
@@ -207,3 +208,16 @@ if __name__ == '__main__':
 
     monte_carlo_size = 1000
     bootstrap_size = 500
+    seed = 7892739
+
+    # true_alpha = np.array([1,1,1,1])
+    # experiment_bivbeta(true_alpha, 50, monte_carlo_size, bootstrap_size, seed)
+    # experiment_bivbeta(true_alpha, 200, monte_carlo_size, bootstrap_size, seed)
+
+    true_alpha = np.array([2,7,3,1])
+    experiment_bivbeta(true_alpha, 50, monte_carlo_size, bootstrap_size, seed)
+    experiment_bivbeta(true_alpha, 200, monte_carlo_size, bootstrap_size, seed)
+
+    true_alpha = np.array([0.7, 0.9, 2.0, 1.5])
+    experiment_bivbeta(true_alpha, 50, monte_carlo_size, bootstrap_size, seed)
+    experiment_bivbeta(true_alpha, 200, monte_carlo_size, bootstrap_size, seed)

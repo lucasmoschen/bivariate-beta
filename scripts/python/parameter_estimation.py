@@ -14,7 +14,7 @@ import numpy as np
 from scipy.special import gamma, loggamma, digamma, beta, hyp2f1
 from mpmath import appellf1
 from scipy.integrate import quad
-from scipy.optimize import minimize, minimize_scalar, root
+from scipy.optimize import minimize, root
 from functools import partial
 import multiprocessing
 
@@ -282,8 +282,9 @@ class BivariateBeta:
         loss += c[1]*g(m2, alpha_13/alpha_sum)
         loss += c[2]*g(v1, alpha_12*alpha_34/div)
         loss += c[3]*g(v2, alpha_13*alpha_24/div)
-        loss += c[4]*g(rho, (alpha[0]*alpha[3] - alpha[1]*alpha[2])/(np.sqrt(alpha_12*alpha_34*alpha_13*alpha_24)))
-        return np.log(loss)
+        v = -0.5 * (np.log(alpha_12)+np.log(alpha_34)+np.log(alpha_13)+np.log(alpha_24))
+        loss += c[4]*g(rho, (alpha[0]*alpha[3] - alpha[1]*alpha[2]) * np.exp(v))
+        return loss
 
     def _choose_loss_function(self, code='l2'):
         """
