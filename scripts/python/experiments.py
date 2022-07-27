@@ -12,8 +12,6 @@ This script requires that `numpy`, `scipy`, `lintegrate` and `tqdm` be installed
 environment you are running. 
 """
 
-from random import sample
-import matplotlib.pyplot as plt
 import numpy as np
 from parameter_estimation import BivariateBeta
 from tqdm import trange
