@@ -405,7 +405,7 @@ class BivariateBeta:
         alpha_hat = np.ones(4)
         alpha_hat[2:] = result.x
         alpha_hat[:2] = self._system_two_solution(m1, m2, alpha_hat[2], alpha_hat[3])
-        return alpha_hat
+        return np.maximum(alpha_hat, 0)
 
     def method_moments_estimator_4(self, x, y, alpha0, g=None, c=np.ones(5)):
         """
