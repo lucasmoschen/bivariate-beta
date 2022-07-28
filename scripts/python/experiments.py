@@ -186,14 +186,14 @@ def experiment_logitnormal(mu, sigma, sample_size, monte_carlo_size, seed):
         alpha_hat2 = distribution.method_moments_estimator_2(X, Y)
         alpha_hat3 = distribution.method_moments_estimator_3(X, Y, alpha0=(1, 1))
         alpha_hat4 = distribution.method_moments_estimator_4(X, Y, alpha0=(1, 1, 1, 1))
-        alpha_hat5 = distribution.modified_maximum_likelihood_estimator(X, Y, x0=(2, 2, 4))
+        #alpha_hat5 = distribution.modified_maximum_likelihood_estimator(X, Y, x0=(2, 2, 4))
 
         est_moments1 = BivariateBeta(alpha=alpha_hat1).moments()
         est_moments2 = BivariateBeta(alpha=alpha_hat2).moments()
         est_moments3 = BivariateBeta(alpha=alpha_hat3).moments()
         est_moments4 = BivariateBeta(alpha=alpha_hat4).moments()
-        est_moments5 = BivariateBeta(alpha=alpha_hat5).moments()
-        est_moments = np.array([est_moments1, est_moments2, est_moments3, est_moments4, est_moments5])
+        #est_moments5 = BivariateBeta(alpha=alpha_hat5).moments()
+        est_moments = np.array([est_moments1, est_moments2, est_moments3, est_moments4])#, est_moments5])
 
         # Updating the estimates iteratively
         bias_new = est_moments - true_moments
@@ -220,14 +220,14 @@ if __name__ == '__main__':
     # experiment_bivbeta(true_alpha, 50, monte_carlo_size, bootstrap_size, seed)
     # experiment_bivbeta(true_alpha, 200, monte_carlo_size, bootstrap_size, seed)
 
-    n = 50
-    mu = np.array([0,0])
-    sigma = np.array([[1.0, 0.1], [0.1, 1.0]])
-    experiment_logitnormal(mu, sigma, n, monte_carlo_size, seed)
+    # n = 50
+    # mu = np.array([0,0])
+    # sigma = np.array([[1.0, 0.1], [0.1, 1.0]])
+    # experiment_logitnormal(mu, sigma, n, monte_carlo_size, seed)
 
-    mu = np.array([-1.0, -1.0])
-    sigma = np.array([[2, -0.8*np.sqrt(2)], [-0.8*np.sqrt(2), 1]])
-    experiment_logitnormal(mu, sigma, n, monte_carlo_size, seed)
+    # mu = np.array([-1.0, -1.0])
+    # sigma = np.array([[2.25, -1.2], [-1.2, 1]])
+    # experiment_logitnormal(mu, sigma, n, monte_carlo_size, seed)
 
 
 

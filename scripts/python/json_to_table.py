@@ -62,7 +62,7 @@ def json2file_logit_normal(filename):
         elif evaluation == 'mse':
             return round(100 * data, 3)
         elif evaluation == 'mape':
-            return round(10 * data, 4)
+            return round(10 * data, 3)
 
     def evaluation_name(evaluation):
         if evaluation == 'bias':
@@ -87,9 +87,9 @@ def json2file_logit_normal(filename):
 
 if __name__ == '__main__':
 
-    json2file_bivbeta(filename1='Documents/GitHub/bivariate-beta/experiments/exp_2_7_3_1_50_1000_500_7892739.json', 
-                      filename2='Documents/GitHub/bivariate-beta/experiments/exp_2_7_3_1_200_1000_500_7892739.json')
+    #json2file_bivbeta(filename1='Documents/GitHub/bivariate-beta/experiments/exp_0.7_0.9_2.0_1.5_50_1000_500_7892739.json', 
+    #                  filename2='Documents/GitHub/bivariate-beta/experiments/exp_0.7_0.9_2.0_1.5_200_1000_500_7892739.json')
 
-    #json2file_logit_normal('Documents/GitHub/bivariate-beta/experiments/exp_logit_0_0_1.0_0.1_0.1_1.0_50_1000_63127371.json')
-    #json2file_logit_normal('Documents/GitHub/bivariate-beta/experiments/exp_logit_-1_-1_1.0_-0.8_-0.8_1.0_50_1000_63127371.json')
+    #json2file_logit_normal('Documents/GitHub/bivariate-beta/experiments/exp_logit_0_0_1.0_0.1_0.1_1.0_50_1000_7892739.json')
+    json2file_logit_normal('Documents/GitHub/bivariate-beta/experiments/exp_logit_-1.0_-1.0_2.25_-1.2_-1.2_1.0_50_1000_7892739.json')
     
