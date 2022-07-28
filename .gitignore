@@ -1,6 +1,5 @@
 # Stan compiled model
 *.hpp
-scripts/bivariate-beta-model
 
 # Byte-compiled / optimized / DLL files
 __pycache__/
