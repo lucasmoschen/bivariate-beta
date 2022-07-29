@@ -1,5 +1,6 @@
 data {
-   real<lower=0, upper=2> x;
+   int<lower=0> n;
+   vector<lower=0, upper=2>[n] x;
    
    real<lower=0> a;
    real<lower=0> b;
@@ -7,10 +8,15 @@ data {
    real<lower=0> d;
 }
 transformed data {
-  real ub = x<1.0 ? x : 1.0;
+  vector[n] ub;
+  vector[n] lb;
+  for(i in 1:n){
+    ub[i] = min({x[i], 1.0});
+    lb[i] = max({x[i]-1.0, 0.0});
+  }
 }
 parameters {
-   real<lower=0, upper=ub> u;
+   vector<lower=lb, upper=ub>[n] u;
 }
 model {
     target += beta_lpdf(u | a,b);
