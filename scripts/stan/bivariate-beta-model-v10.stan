@@ -6,7 +6,10 @@ data {
    int<lower=0> n;
    vector<lower=0, upper=1>[n] x;
    vector<lower=0, upper=1>[n] y;
-   vector<lower=0>[4] alpha;
+
+   vector<lower=0>[4] a;
+   vector<lower=0>[4] b;
+
 }
 transformed data {
    vector[n] lb;
@@ -17,10 +20,11 @@ transformed data {
    }
 }
 parameters {
+   vector<lower=0>[4] alpha;
    vector<lower=lb, upper=ub>[n] u;
 }
 transformed parameters {
-   simplex[4] theta[n];
+   array[n] simplex[4] theta;
    for(i in 1:n){
      theta[i,1] = u[i];
      theta[i,2] = x[i]-u[i];
@@ -29,6 +33,7 @@ transformed parameters {
    }
 }
 model {
-    u ~ uniform(lb, ub);
-    theta ~ dirichlet(alpha);
+   alpha ~ gamma(a,b);
+   u ~ uniform(lb, ub);
+   theta ~ dirichlet(alpha);
 }

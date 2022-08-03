@@ -19,19 +19,25 @@ transformed data {
     vector[n] lb;
     vector[n] ub;
     for (i in 1:n) {
-        lb[i] = max({1.0-x[i]-y[i], -1.0+x[i]+y[i]});
-        ub[i] = min({1.0+x[i]-y[i], 1.0-x[i]+y[i]});
+        lb[i] = max({0.0, x[i]+y[i]-1.0});
+        ub[i] = min({x[i], y[i]});
     }
+    vector[n] one = rep_vector(1.0, n);
 }
 parameters {
     vector<lower=0>[4] alpha;
-    vector<lower=lb, upper=ub>[n] z;
+    vector<lower=lb, upper=ub>[n] u;
+}
+transformed parameters {
+   vector<lower=0, upper=1>[n] u2 = x-u;
+   vector<lower=0, upper=1>[n] u3 = y-u;
+   vector<lower=0, upper=1>[n] u4 = 1-x-y+u;
 }
 model {
     target += gamma_lpdf(alpha | a, b);
-    target += (alpha[1]-1) * log(x+y+z-1); 
-    target += (alpha[2]-1) * log1p(x-y-z);
-    target += (alpha[3]-1) * log1p(-x+y-z);
-    target += (alpha[4]-1) * log1p(-x-y+z);
-    target += -n * ((sum(alpha)-3) * log(2) + log_multi_beta(alpha));
+    target += (alpha[1]-1) * sum(log(u));//- log(one./u + 1.0)); 
+    target += (alpha[2]-1) * sum(log(u2));// - log(one./u2 + 1.0));
+    target += (alpha[3]-1) * sum(log(u3));// - log(one./u3 + 1.0));
+    target += (alpha[4]-1) * sum(log(u4));// - log(one./u4 + 1.0));
+    target += -n * log_multi_beta(alpha);
 }
