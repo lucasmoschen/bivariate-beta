@@ -15,6 +15,7 @@ from scipy.special import gamma, loggamma, digamma, beta, hyp2f1
 from mpmath import appellf1
 from scipy.integrate import quad
 from scipy.optimize import minimize, root
+from scipy.stats import norm
 from functools import partial
 import multiprocessing
 
@@ -595,6 +596,55 @@ class BivariateBeta:
         """
         ci = np.quantile(samples, q=[(1-level)/2, (1+level)/2], axis=1)
         return ci
+
+    def _choice_g(self, which):
+
+        if which == 'quadratic':
+            g = lambda x1,x2,x3,x4: x1*(1-x1)*x4 - x3*(1-x3)*x2
+            nabla_g = lambda x1,x2,x3,x4: np.array([x4*(1-2*x1), -x3*(1-x3), -x2*(1-2*x3), x1*(1-x1)])
+        elif which == 'divisor':
+            g = lambda x1,x2,x3,x4: x1*(1-x1)/x2 - x3*(1-x3)/x4
+            nabla_g = lambda x1,x2,x3,x4: np.array([(1-2*x1)/x2, -x1*(1-x1)/x2**2, -(1-2*x3)/x4, x3*(1-x3)/x4**2])
+        return g, nabla_g
+
+    def marginal_diagnostic(self, x, y, which_g='quadratic'):
+        """
+        Calculates the test statistic sqrt(n) * S/sigma_n, which, under the null hypothesis, 
+        converges to a standard normal distribution.
+        Parameters
+        | x (n-array): data in the first component
+        | y (n-array): data in the second component
+
+        Returns
+        | S (float): test statistic
+        | p_value (float): p-value from the test.
+        """
+
+        g, nabla_g = self._choice_g(which_g)
+        XY = np.column_stack([x, y])
+        n = x.shape[0]
+
+        K = np.zeros((4,4))
+        for k in range(2):
+            for l in range(2):
+                for i in range(2):
+                    for j in range(2):
+                        arr1 = (XY[:,k] - XY[:,k].mean())**(i+1)
+                        arr2 = (XY[:,l] - XY[:,l].mean())**(j+1)
+                        K[2*k+i, 2*l+j] = np.mean((arr1 - arr1.mean()) * (arr2 - arr2.mean()))
+
+        m1 = x.mean() 
+        v1 = x.var(ddof=1)
+        m2 = y.mean() 
+        v2 = y.var(ddof=1)
+
+        S = g(m1, v1, m2, v2)
+        sigma = np.sqrt(nabla_g(m1, v1, m2, v2) @ K @ nabla_g(m1, v1, m2, v2))
+        S /= sigma
+        S *= np.sqrt(n)
+
+        p_value = 2 * norm.cdf(-abs(S))
+        return (S, p_value)
 
 if __name__ == '__main__':
 
