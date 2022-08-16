@@ -146,7 +146,7 @@ def experiment_bivbeta(true_alpha, sample_size, monte_carlo_size, bootstrap_size
             x0_parameters = [None, None, None, None, (2,2,4)]
 
             for ind in range(4):
-                samples = distribution.bootstrap_method(x=X, y=Y, 
+                samples = distribution.bootstrap_method_parametric(x=X, y=Y, 
                                                         B=bootstrap_size,
                                                         method=methods[ind],
                                                         processes=4,
@@ -206,11 +206,11 @@ if __name__ == '__main__':
 
     monte_carlo_size = 1000
     bootstrap_size = 500
-    seed = 7892739
+    seed = 617836829321
 
-    # true_alpha = np.array([1,1,1,1])
-    # experiment_bivbeta(true_alpha, 50, monte_carlo_size, bootstrap_size, seed)
-    # experiment_bivbeta(true_alpha, 200, monte_carlo_size, bootstrap_size, seed)
+    true_alpha = np.array([1,1,1,1])
+    experiment_bivbeta(true_alpha, 50, monte_carlo_size, bootstrap_size, seed)
+    experiment_bivbeta(true_alpha, 200, monte_carlo_size, bootstrap_size, seed)
 
     # true_alpha = np.array([2,7,3,1])
     # experiment_bivbeta(true_alpha, 50, monte_carlo_size, bootstrap_size, seed)
