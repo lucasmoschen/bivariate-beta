@@ -87,9 +87,9 @@ def json2file_logit_normal(filename):
 
 if __name__ == '__main__':
 
-    #json2file_bivbeta(filename1='Documents/GitHub/bivariate-beta/experiments/exp_0.7_0.9_2.0_1.5_50_1000_500_7892739.json', 
-    #                  filename2='Documents/GitHub/bivariate-beta/experiments/exp_0.7_0.9_2.0_1.5_200_1000_500_7892739.json')
+    json2file_bivbeta(filename1='Documents/github/bivariate-beta/experiments/exp_1_1_1_1_50_1000_500_617836829321.json', 
+                      filename2='Documents/github/bivariate-beta/experiments/exp_0.7_0.9_2.0_1.5_200_1000_500_7892739.json')
 
     #json2file_logit_normal('Documents/GitHub/bivariate-beta/experiments/exp_logit_0_0_1.0_0.1_0.1_1.0_50_1000_7892739.json')
-    json2file_logit_normal('Documents/GitHub/bivariate-beta/experiments/exp_logit_-1.0_-1.0_2.25_-1.2_-1.2_1.0_50_1000_7892739.json')
+    #json2file_logit_normal('Documents/GitHub/bivariate-beta/experiments/exp_logit_-1.0_-1.0_2.25_-1.2_-1.2_1.0_50_1000_7892739.json')
     
