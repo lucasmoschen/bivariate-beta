@@ -11,7 +11,7 @@ This script requires that `numpy`, `scipy` and `lintegrate` be installed within 
 environment you are running. 
 """
 import numpy as np
-from scipy.special import gamma, loggamma, digamma, beta, hyp2f1
+from scipy.special import gamma, loggamma, digamma, beta, hyp2f1, logsumexp, softmax
 from mpmath import appellf1
 from scipy.integrate import quad
 from scipy.optimize import minimize, root
@@ -645,6 +645,75 @@ class BivariateBeta:
 
         p_value = 2 * norm.cdf(-abs(S))
         return (S, p_value)
+
+    def positive_diagnostic_diagnostic(self, x, y):
+        """
+        Calculates the test statistic sqrt(n) * S/sigma_n, which, under the null hypothesis, 
+        converges to a standard normal distribution.
+        Parameters
+        | x (n-array): data in the first component
+        | y (n-array): data in the second component
+
+        Returns
+        | S (float): test statistic
+        | p_value (float): p-value from the test.
+        """
+
+        def log_sum_exp_norm(x):
+            return -logsumexp(-100 * x / np.linalg.norm(x, 2))
+
+        def g(x1,x2,x3,x4,x5):
+            alpha4 = x5 * np.sqrt(x1*x3*(1-x1)*(1-x3)) + (1-x1)*(1-x3)
+            alpha1 = (x1 + x3 - 1) + alpha4
+            alpha2 = (1 - x3) + alpha4
+            alpha3 = (1 - x1) + alpha4
+            alpha = (x1 - x1*x1 - x2) * np.array([alpha1, alpha2, alpha3, alpha4])
+            return log_sum_exp_norm(alpha)
+
+        def nabla_g(x1,x2,x3,x4,x5):
+
+            gradient = np.zeros(5)
+            h = 1e-12
+            f = np.zeros(5)
+            for i in range(5):
+                f[i] = 1
+                f[i-1] = 0 
+                gradient[i] = g(x1+h*f[0],x2+h*f[1],x3+h*f[2],x4+h*f[3],x5+h*f[4]) - g(x1,x2,x3,x4,x5)
+                gradient[i] /= h
+            return gradient
+
+        XY = np.column_stack([x, y])
+        n = x.shape[0]
+
+        K = np.zeros((5,5))
+        for k in range(2):
+            for l in range(2):
+                for i in range(2):
+                    for j in range(2):
+                        arr1 = (XY[:,k] - XY[:,k].mean())**(i+1)
+                        arr2 = (XY[:,l] - XY[:,l].mean())**(j+1)
+                        K[2*k+i, 2*l+j] = np.mean((arr1 - arr1.mean()) * (arr2 - arr2.mean()))
+
+        arr1 =  (XY[:,0] - XY[:,0].mean()) * (XY[:,1] - XY[:,1].mean())
+        for i in range(2):
+            for j in range(2):
+                arr2 = (XY[:,i] - XY[:,i].mean())**(j+1)
+                K[4,2*i+j] = np.mean((arr1 - arr1.mean()) * (arr2 - arr2.mean()))
+                K[2*i+j,4] = K[4,2*i+j]
+        K[4,4] = np.mean((arr1 - arr1.mean()) * (arr1 - arr1.mean()))
+
+        m1 = x.mean() 
+        v1 = x.var(ddof=1)
+        m2 = y.mean() 
+        v2 = y.var(ddof=1)
+        rho = np.corrcoef(x,y)[0,1]
+
+        S = g(m1, v1, m2, v2, rho)
+        sigma = np.sqrt(nabla_g(m1, v1, m2, v2, rho) @ K @ nabla_g(m1, v1, m2, v2, rho))
+        S /= sigma
+        S *= np.sqrt(n)
+
+        return S
 
 if __name__ == '__main__':
 
