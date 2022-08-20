@@ -11,15 +11,13 @@ This script requires that `numpy`, `scipy` and `lintegrate` be installed within 
 environment you are running. 
 """
 import numpy as np
-from scipy.special import gamma, loggamma, digamma, beta, hyp2f1, logsumexp, softmax
+from scipy.special import gamma, loggamma, digamma, beta, hyp2f1, logsumexp
 from mpmath import appellf1
 from scipy.integrate import quad
-from scipy.optimize import minimize, root
+from scipy.optimize import minimize, root, linear_sum_assignment
 from scipy.stats import norm
 from functools import partial
 import multiprocessing
-
-# import matplotlib.pyplot as plt
 from tqdm import tqdm
 # import lintegrate
 
@@ -259,7 +257,7 @@ class BivariateBeta:
         Calculates the loss function
         c[0]*g(m1,E[X1])+c[1]*g(m2,E[X2])+c[2]*g(v1,Var[X1])+c[3]*g(v2,Var[X2])+c[4]*g(rho,Cor(X1,X2))
         as function of alpha, when the means (m1,m2), variances (v1,v2), and 
-        correlatation is fixed.
+        correlation is fixed.
         Parameters:
         | alpha (4-array): parameter to calculate the loss
         | m1 (float): sample mean of the first component. 
@@ -293,7 +291,7 @@ class BivariateBeta:
         - squared (code='l2') - Default
         - absolute (code='l1')
         - relative quadratic (code='rq')
-        - relative absoltute (code='ra')
+        - relative absolute (code='ra')
         """
         if code == 'l2':
             return lambda x,y: (x-y)*(x-y)
@@ -363,7 +361,7 @@ class BivariateBeta:
     def method_moments_estimator_3(self, x, y, alpha0):
         """
         Method of moments estimator of parameter alpha given the bivariate data (x,y) of size n.
-        This method (MM3) solves the system with three euations (m1 and m2) and chooses alpha3 and alpha4 
+        This method (MM3) solves the system with three equations (m1 and m2) and chooses alpha3 and alpha4 
         as the value to minimize the quadratic difference to the variances and correlation
         Parameters
         | x (n-array): data in the first component
@@ -543,11 +541,11 @@ class BivariateBeta:
         | x (n-array): data in the first component
         | y (n-array): data in the second component
         | B (int): number of bootstrap samples
-        | method (fuction): a function that receives arrays x and y, and returns an alpha. Pass alpha0 if necessary.
+        | method (function): a function that receives arrays x and y, and returns an alpha. Pass alpha0 if necessary.
         | seed (int): seed of the random object used in the function.
 
         Returns
-        | boostrap_sample (4xB-array): estimated parameters for each resample.
+        | bootstrap_sample (4xB-array): estimated parameters for each resample.
         """
         ro = np.random.RandomState(seed)
         index = ro.choice(range(len(x)), size=(len(x), B))
@@ -567,11 +565,11 @@ class BivariateBeta:
         | x (n-array): data in the first component
         | y (n-array): data in the second component
         | B (int): number of bootstrap samples
-        | method (fuction): a function that receives arrays x and y, and returns an alpha. Pass alpha0 if necessary.
+        | method (function): a function that receives arrays x and y, and returns an alpha. Pass alpha0 if necessary.
         | seed (int): seed of the random object used in the function.
 
         Returns
-        | boostrap_sample (4xB-array): estimated parameters for each resample.
+        | bootstrap_sample (4xB-array): estimated parameters for each resample.
         """
         ro = np.random.RandomState(seed)
         alpha_hat = self._methods_wrapper(x, y, alpha0=alpha0, x0=x0, method=method)
@@ -645,6 +643,44 @@ class BivariateBeta:
 
         p_value = 2 * norm.cdf(-abs(S))
         return (S, p_value)
+
+    def _assignment_problem(self, x1, x2, n):
+        """
+        Assignment problem solving.
+        """
+        weight_matrix = np.zeros((n,n))
+        for i in range(n):
+            for j in range(n):
+                weight_matrix[i,j] = np.linalg.norm(x1[i] - x2[j], ord=2)
+        index1, index2 = linear_sum_assignment(cost_matrix=weight_matrix)
+        return index1, index2, weight_matrix[index1, index2]
+
+    def qq_plot(self, x, y, rng_object=np.random.default_rng(32102891)):
+        """
+        Q-Q plot between the observed sample and the theoretical through estimation and simulation.
+        """
+        n = len(x)
+        XY = np.column_stack([x,y])
+        alpha_hat = self.method_moments_estimator_3(x, y, alpha0=(1,1))
+
+        U = rng_object.dirichlet(alpha_hat, size=n)
+        X_hat = U[:,0] + U[:,1]
+        Y_hat = U[:,0] + U[:,2]
+        XY_hat = np.column_stack([X_hat, Y_hat])
+
+        index1, index2, distances1 = self._assignment_problem(XY, XY_hat, n)
+
+        distances1 = np.sort(distances1)
+        distances2 = np.zeros_like(distances1)
+        for k in range(50):
+            U = rng_object.dirichlet(alpha_hat, size=n)
+            X_hat = U[:,0] + U[:,1]
+            Y_hat = U[:,0] + U[:,2]
+            XY_hat2 = np.column_stack([X_hat, Y_hat])
+            _, _, d2 = self._assignment_problem(XY_hat2, XY_hat, n)
+            distances2 = (k * distances2 + np.sort(d2))/(k+1)
+
+        return XY[index1, :], XY_hat[index2, :], distances1, distances2
 
     def positive_diagnostic_diagnostic(self, x, y):
         """
