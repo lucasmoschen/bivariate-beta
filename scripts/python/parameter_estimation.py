@@ -200,11 +200,11 @@ class BivariateBeta:
 
     def _system_solution(self, m1, m2, v1, rho):
         alpha_sum = (m1 - m1*m1)/v1 - 1
-        alpha_4 = alpha_sum * (rho * np.sqrt(m1 * m2 * (1 - m1) * (1 - m2)) + (1 - m1) * (1 - m2))
-        alpha_1 = (m1 + m2 - 1) * alpha_sum + alpha_4
-        alpha_2 = (1 - m2) * alpha_sum - alpha_4
-        alpha_3 = (1 - m1) * alpha_sum - alpha_4
-        return np.array([alpha_1, alpha_2, alpha_3, alpha_4])
+        alpha_4 = rho * np.sqrt(m1 * m2 * (1 - m1) * (1 - m2)) + (1 - m1) * (1 - m2)
+        alpha_1 = m1 + m2 - 1 + alpha_4
+        alpha_2 = 1 - m2 - alpha_4
+        alpha_3 = 1 - m1 - alpha_4
+        return alpha_sum * np.array([alpha_1, alpha_2, alpha_3, alpha_4])
 
     def _system_three_solution(self, m1, m2, rho):
         """
@@ -658,62 +658,7 @@ class BivariateBeta:
         | S (float): test statistic
         | p_value (float): p-value from the test.
         """
-
-        def log_sum_exp_norm(x):
-            return -logsumexp(-100 * x / np.linalg.norm(x, 2))
-
-        def g(x1,x2,x3,x4,x5):
-            alpha4 = x5 * np.sqrt(x1*x3*(1-x1)*(1-x3)) + (1-x1)*(1-x3)
-            alpha1 = (x1 + x3 - 1) + alpha4
-            alpha2 = (1 - x3) + alpha4
-            alpha3 = (1 - x1) + alpha4
-            alpha = (x1 - x1*x1 - x2) * np.array([alpha1, alpha2, alpha3, alpha4])
-            return log_sum_exp_norm(alpha)
-
-        def nabla_g(x1,x2,x3,x4,x5):
-
-            gradient = np.zeros(5)
-            h = 1e-12
-            f = np.zeros(5)
-            for i in range(5):
-                f[i] = 1
-                f[i-1] = 0 
-                gradient[i] = g(x1+h*f[0],x2+h*f[1],x3+h*f[2],x4+h*f[3],x5+h*f[4]) - g(x1,x2,x3,x4,x5)
-                gradient[i] /= h
-            return gradient
-
-        XY = np.column_stack([x, y])
-        n = x.shape[0]
-
-        K = np.zeros((5,5))
-        for k in range(2):
-            for l in range(2):
-                for i in range(2):
-                    for j in range(2):
-                        arr1 = (XY[:,k] - XY[:,k].mean())**(i+1)
-                        arr2 = (XY[:,l] - XY[:,l].mean())**(j+1)
-                        K[2*k+i, 2*l+j] = np.mean((arr1 - arr1.mean()) * (arr2 - arr2.mean()))
-
-        arr1 =  (XY[:,0] - XY[:,0].mean()) * (XY[:,1] - XY[:,1].mean())
-        for i in range(2):
-            for j in range(2):
-                arr2 = (XY[:,i] - XY[:,i].mean())**(j+1)
-                K[4,2*i+j] = np.mean((arr1 - arr1.mean()) * (arr2 - arr2.mean()))
-                K[2*i+j,4] = K[4,2*i+j]
-        K[4,4] = np.mean((arr1 - arr1.mean()) * (arr1 - arr1.mean()))
-
-        m1 = x.mean() 
-        v1 = x.var(ddof=1)
-        m2 = y.mean() 
-        v2 = y.var(ddof=1)
-        rho = np.corrcoef(x,y)[0,1]
-
-        S = g(m1, v1, m2, v2, rho)
-        sigma = np.sqrt(nabla_g(m1, v1, m2, v2, rho) @ K @ nabla_g(m1, v1, m2, v2, rho))
-        S /= sigma
-        S *= np.sqrt(n)
-
-        return S
+        pass
 
 if __name__ == '__main__':
 
