@@ -694,8 +694,13 @@ class BivariateBeta:
         | S (float): test statistic
         | p_value (float): p-value from the test.
         """
-        pass
-
+        m1 = np.mean(x)
+        m2 = np.mean(y)
+        rho = np.corrcoef(x, y)[0,1]
+        D = rho * np.exp(0.5*(np.log(m1) + np.log1p(-m1) + np.log(m2) + np.log1p(-m2)))
+        M = min(D + m1*m2, -D + m1*(1-m2), -D + m2*(1-m1), D + (1-m1)*(1-m2))
+        return M
+    
 if __name__ == '__main__':
 
     true_alpha = np.array([1,1,1,1])
