@@ -174,7 +174,7 @@ class BivariateBeta:
         L_neg = -(log_pdf - len(x) * c)
         return L_neg
 
-    def moments(self) -> np.array:
+    def moments(self, alpha=None) -> np.array:
         """
         Calculates the main moments of the bivariate beta distribution: 
         E[X], E[Y], Var(X), Var(Y) and Corr(X,Y).
@@ -182,7 +182,8 @@ class BivariateBeta:
         Returns:
         | result (5-array): moments of the distribution 
         """
-        alpha = self.alpha
+        if alpha is None:
+            alpha = self.alpha
         alpha_sum = alpha.sum()
 
         E_X = (alpha[0] + alpha[1])/alpha_sum
