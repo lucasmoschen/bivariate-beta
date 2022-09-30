@@ -4,6 +4,7 @@ Creates the tables to the paper from json file
 """
 import json
 import numpy as np
+import os
 
 def json2file_bivbeta(filename1, filename2):
     """
@@ -36,13 +37,17 @@ def json2file_bivbeta(filename1, filename2):
             return 'Coverage (\%)'
 
     table = ''
-    for id, method in enumerate(['MM1', 'MM2', 'MM3', 'MM4']):
+    for i, method in enumerate(['MM1', 'MM2', 'MM3', 'MM4', 'BE1', 'BE2']):
         table += "\multirow{4}{*}{"+method+"}"
         for evaluation in ['bias', 'mse', 'mape', 'coverage']:
+            if i == 5 and evaluation == 'coverage':
+                id = 4
+            else:
+                id = i
             data = tuple(experiment1[evaluation][id] + experiment2[evaluation][id])
             table += '& '+ evaluation_name(evaluation) + ' '
-            for i in range(8):
-                table += ' & {}'.format(formatting(data[i], evaluation))
+            for j in range(8):
+                table += ' & {}'.format(formatting(data[j], evaluation))
             table += ' \\\ \n'
         table += '\hline \n'
 
@@ -87,8 +92,8 @@ def json2file_logit_normal(filename):
 
 if __name__ == '__main__':
 
-    json2file_bivbeta(filename1='Documents/github/bivariate-beta/experiments/exp_1_1_1_1_50_1000_500_617836829321.json', 
-                      filename2='Documents/github/bivariate-beta/experiments/exp_0.7_0.9_2.0_1.5_200_1000_500_7892739.json')
+    json2file_bivbeta(filename1=os.path.join('experiments', 'exp_0.7_0.9_2.0_1.5_50_1000_500_378291.json'), 
+                      filename2=os.path.join('experiments', 'exp_0.7_0.9_2.0_1.5_200_1000_500_378291.json'))
 
     #json2file_logit_normal('Documents/GitHub/bivariate-beta/experiments/exp_logit_0_0_1.0_0.1_0.1_1.0_50_1000_7892739.json')
     #json2file_logit_normal('Documents/GitHub/bivariate-beta/experiments/exp_logit_-1.0_-1.0_2.25_-1.2_-1.2_1.0_50_1000_7892739.json')
