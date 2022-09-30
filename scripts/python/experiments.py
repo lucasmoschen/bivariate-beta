@@ -191,6 +191,11 @@ def experiment_logitnormal(mu, sigma, sample_size, monte_carlo_size, seed):
 
     filename = starting_experiment_2(mu, sigma, sample_size, monte_carlo_size, seed)
 
+    # Stan setting
+    data = {'n': sample_size, 'a': np.ones(4), 'b': np.ones(4)}
+    stanfile = os.path.join(ROOT_DIR, '..', 'stan', 'bivariate-beta-model-v3.stan')
+    model = CmdStanModel(stan_file=stanfile, cpp_options={'STAN_THREADS': True})
+
     for exp in trange(monte_carlo_size):
         Z = rng.multivariate_normal(mu, sigma, size=sample_size)
         X = 1/(1 + np.exp(-Z[:, 0]))
@@ -200,14 +205,21 @@ def experiment_logitnormal(mu, sigma, sample_size, monte_carlo_size, seed):
         alpha_hat2 = distribution.method_moments_estimator_2(X, Y)
         alpha_hat3 = distribution.method_moments_estimator_3(X, Y, alpha0=(1, 1))
         alpha_hat4 = distribution.method_moments_estimator_4(X, Y, alpha0=(1, 1, 1, 1))
-        #alpha_hat5 = distribution.modified_maximum_likelihood_estimator(X, Y, x0=(2, 2, 4))
+        
+        data['xy'] = np.column_stack([X,Y])
+        model_fit = model.sample(data=data, iter_warmup=2000, iter_sampling=2000, chains=4, adapt_delta=0.9, 
+                                 show_progress=False, show_console=True)
+        summary = model_fit.summary(percentiles=(2.5, 50, 97.5))
+        alpha_hat5 = summary['Mean'].iloc[1:5].values
+        alpha_hat6 = summary['50%'].iloc[1:5].values
 
         est_moments1 = BivariateBeta(alpha=alpha_hat1).moments()
         est_moments2 = BivariateBeta(alpha=alpha_hat2).moments()
         est_moments3 = BivariateBeta(alpha=alpha_hat3).moments()
         est_moments4 = BivariateBeta(alpha=alpha_hat4).moments()
-        #est_moments5 = BivariateBeta(alpha=alpha_hat5).moments()
-        est_moments = np.array([est_moments1, est_moments2, est_moments3, est_moments4])#, est_moments5])
+        est_moments5 = BivariateBeta(alpha=alpha_hat5).moments()
+        est_moments6 = BivariateBeta(alpha=alpha_hat6).moments()
+        est_moments = np.array([est_moments1, est_moments2, est_moments3, est_moments4, est_moments5, est_moments6])
 
         # Updating the estimates iteratively
         bias_new = est_moments - true_moments
@@ -272,18 +284,18 @@ if __name__ == '__main__':
     #experiment_bivbeta(true_alpha, 50, monte_carlo_size, bootstrap_size, seed)
     #experiment_bivbeta(true_alpha, 200, monte_carlo_size, bootstrap_size, seed)
 
-    true_alpha = np.array([0.7, 0.9, 2.0, 1.5])
-    experiment_bivbeta(true_alpha, 50, monte_carlo_size, bootstrap_size, seed)
+    #true_alpha = np.array([0.7, 0.9, 2.0, 1.5])
+    #experiment_bivbeta(true_alpha, 50, monte_carlo_size, bootstrap_size, seed)
     #experiment_bivbeta(true_alpha, 200, monte_carlo_size, bootstrap_size, seed)
 
-    # n = 50
-    # mu = np.array([0,0])
-    # sigma = np.array([[1.0, 0.1], [0.1, 1.0]])
-    # experiment_logitnormal(mu, sigma, n, monte_carlo_size, seed)
+    n = 50
+    mu = np.array([0,0])
+    sigma = np.array([[1.0, 0.1], [0.1, 1.0]])
+    experiment_logitnormal(mu, sigma, n, monte_carlo_size, seed)
 
-    # mu = np.array([-1.0, -1.0])
-    # sigma = np.array([[2.25, -1.2], [-1.2, 1]])
-    # experiment_logitnormal(mu, sigma, n, monte_carlo_size, seed)
+    mu = np.array([-1.0, -1.0])
+    sigma = np.array([[2.25, -1.2], [-1.2, 1]])
+    experiment_logitnormal(mu, sigma, n, monte_carlo_size, seed)
 
     # a = 1
     # b = 1
