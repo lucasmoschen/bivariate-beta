@@ -685,8 +685,7 @@ class BivariateBeta:
 
     def positive_diagnostic_diagnostic(self, x, y):
         """
-        Calculates the test statistic sqrt(n) * S/sigma_n, which, under the null hypothesis, 
-        converges to a standard normal distribution.
+        Calculates the minimum statistic related to the interval of rho.
         Parameters
         | x (n-array): data in the first component
         | y (n-array): data in the second component
