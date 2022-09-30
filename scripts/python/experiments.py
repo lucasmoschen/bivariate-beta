@@ -208,7 +208,7 @@ def experiment_logitnormal(mu, sigma, sample_size, monte_carlo_size, seed):
         
         data['xy'] = np.column_stack([X,Y])
         model_fit = model.sample(data=data, iter_warmup=2000, iter_sampling=2000, chains=4, adapt_delta=0.9, 
-                                 show_progress=False, show_console=True)
+                                 show_progress=False, show_console=False)
         summary = model_fit.summary(percentiles=(2.5, 50, 97.5))
         alpha_hat5 = summary['Mean'].iloc[1:5].values
         alpha_hat6 = summary['50%'].iloc[1:5].values
