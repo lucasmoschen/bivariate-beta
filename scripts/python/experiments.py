@@ -268,8 +268,8 @@ if __name__ == '__main__':
     #experiment_bivbeta(true_alpha, 50, monte_carlo_size, bootstrap_size, seed)
     #experiment_bivbeta(true_alpha, 200, monte_carlo_size, bootstrap_size, seed)
 
-    true_alpha = np.array([2,7,3,1])
-    experiment_bivbeta(true_alpha, 50, monte_carlo_size, bootstrap_size, seed)
+    #true_alpha = np.array([2,7,3,1])
+    #experiment_bivbeta(true_alpha, 50, monte_carlo_size, bootstrap_size, seed)
     #experiment_bivbeta(true_alpha, 200, monte_carlo_size, bootstrap_size, seed)
 
     true_alpha = np.array([0.7, 0.9, 2.0, 1.5])
