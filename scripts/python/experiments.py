@@ -305,7 +305,3 @@ if __name__ == '__main__':
     # N = 1000
     # seed = 831290
     # simulated_based_calibration(a, b, c, n, L, N, seed)
-
-
-
-
