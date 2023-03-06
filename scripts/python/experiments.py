@@ -1,12 +1,12 @@
 #usr/bin/env python3
 """
-Experiments for the paper "On a bivariate beta distribution".
+Experiments for the paper "Bivariate beta distribution: parameter inference and diagnostics".
 
 Author: Lucas Moschen
 
-This script is a support for the (unpublished) paper "On a bivariate beta" 
-from Lucas Machado Moschen and Luiz Max Carvalho. It allows the user to replicate 
-the results found in the paper.
+This script is a support for the paper "Bivariate beta distribution: parameter inference and diagnostics" 
+from Lucas Machado Moschen and Luiz Max Carvalho. 
+It allows the user to replicate the results found in the paper.
 
 This script requires that `numpy`, `scipy`, `lintegrate` and `tqdm` be installed within the Python 
 environment you are running. 
