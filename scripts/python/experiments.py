@@ -130,14 +130,14 @@ def experiment_bivbeta(true_alpha, sample_size, monte_carlo_size, bootstrap_size
         alpha_hat3 = distribution.method_moments_estimator_3(X, Y, alpha0=(1, 1))
         time3 = time() - t0
         t0 = time()
-        alpha_hat4 = distribution.method_moments_estimator_4(X, Y, alpha0=(1, 1, 1, 1))
+        alpha_hat4 = distribution.method_moments_estimator_4(X, Y)
         time4 = time() - t0
 
         if coverage:
 
             methods = [distribution.method_moments_estimator_1, distribution.method_moments_estimator_2, 
                        distribution.method_moments_estimator_3, distribution.method_moments_estimator_4]
-            alpha0_parameters = [None, None, (1,1), (1,1,1,1)]
+            alpha0_parameters = [None, None, (1,1), None]
 
             for ind in range(4):
                 samples = distribution.bootstrap_method_parametric(x=X, y=Y, 
@@ -204,7 +204,7 @@ def experiment_logitnormal(mu, sigma, sample_size, monte_carlo_size, seed):
         alpha_hat1 = distribution.method_moments_estimator_1(X, Y)
         alpha_hat2 = distribution.method_moments_estimator_2(X, Y)
         alpha_hat3 = distribution.method_moments_estimator_3(X, Y, alpha0=(1, 1))
-        alpha_hat4 = distribution.method_moments_estimator_4(X, Y, alpha0=(1, 1, 1, 1))
+        alpha_hat4 = distribution.method_moments_estimator_4(X, Y)
         
         data['xy'] = np.column_stack([X,Y])
         model_fit = model.sample(data=data, iter_warmup=2000, iter_sampling=2000, chains=4, adapt_delta=0.9, 
@@ -272,30 +272,52 @@ def simulated_based_calibration(a, b, c, n, L=63, N=1000, seed=831290):
 
 if __name__ == '__main__':
 
-    monte_carlo_size = 1000
+    monte_carlo_size = 20
     bootstrap_size = 500
-    seed = 378291
+    seed = 37812984
 
     #true_alpha = np.array([1,1,1,1])
     #experiment_bivbeta(true_alpha, 50, monte_carlo_size, bootstrap_size, seed)
     #experiment_bivbeta(true_alpha, 200, monte_carlo_size, bootstrap_size, seed)
 
-    #true_alpha = np.array([2,7,3,1])
+    #true_alpha = np.array([3,1,1,3])
     #experiment_bivbeta(true_alpha, 50, monte_carlo_size, bootstrap_size, seed)
     #experiment_bivbeta(true_alpha, 200, monte_carlo_size, bootstrap_size, seed)
 
-    #true_alpha = np.array([0.7, 0.9, 2.0, 1.5])
+    #true_alpha = np.array([1,7.4,2.6,1])
     #experiment_bivbeta(true_alpha, 50, monte_carlo_size, bootstrap_size, seed)
     #experiment_bivbeta(true_alpha, 200, monte_carlo_size, bootstrap_size, seed)
 
-    n = 50
-    mu = np.array([0,0])
-    sigma = np.array([[1.0, 0.1], [0.1, 1.0]])
-    experiment_logitnormal(mu, sigma, n, monte_carlo_size, seed)
+    #true_alpha = np.array([0.4,0.5,1.4,0.7])
+    #experiment_bivbeta(true_alpha, 50, monte_carlo_size, bootstrap_size, seed)
+    #experiment_bivbeta(true_alpha, 200, monte_carlo_size, bootstrap_size, seed)
 
-    mu = np.array([-1.0, -1.0])
-    sigma = np.array([[2.25, -1.2], [-1.2, 1]])
-    experiment_logitnormal(mu, sigma, n, monte_carlo_size, seed)
+    monte_carlo_size = 1000
+
+    #true_alpha = np.array([1,1,1,1])
+    #experiment_bivbeta(true_alpha, 50, monte_carlo_size, bootstrap_size, seed)
+    #experiment_bivbeta(true_alpha, 200, monte_carlo_size, bootstrap_size, seed)
+
+    true_alpha = np.array([3,1,1,3])
+    #experiment_bivbeta(true_alpha, 50, monte_carlo_size, bootstrap_size, seed)
+    experiment_bivbeta(true_alpha, 200, monte_carlo_size, bootstrap_size, seed)
+
+    true_alpha = np.array([1,7.4,2.6,1])
+    experiment_bivbeta(true_alpha, 50, monte_carlo_size, bootstrap_size, seed)
+    experiment_bivbeta(true_alpha, 200, monte_carlo_size, bootstrap_size, seed)
+
+    true_alpha = np.array([0.4,0.5,1.4,0.7])
+    experiment_bivbeta(true_alpha, 50, monte_carlo_size, bootstrap_size, seed)
+    experiment_bivbeta(true_alpha, 200, monte_carlo_size, bootstrap_size, seed)
+
+    #n = 50
+    #mu = np.array([0,0])
+    #sigma = np.array([[1.0, 0.1], [0.1, 1.0]])
+    #experiment_logitnormal(mu, sigma, n, monte_carlo_size, seed)
+
+    #mu = np.array([-1.0, -1.0])
+    #sigma = np.array([[2.25, -1.2], [-1.2, 1]])
+    #experiment_logitnormal(mu, sigma, n, monte_carlo_size, seed)
 
     # a = 1
     # b = 1

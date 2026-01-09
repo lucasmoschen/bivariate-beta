@@ -1,0 +1,38 @@
+{
+  "chart": {
+    "title": "Share of one-year-olds vaccinated against measles",
+    "subtitle": "Share of one-year-olds who have received the first dose of the measles vaccine (MCV1).",
+    "note": "Measles is a highly contagious viral disease, most common in young children. Its effects include blindness, inflammation of the brain, severe diarrhea, and severe respiratory infections such as pneumonia.",
+    "citation": "WHO & UNICEF (2025); UN, World Population Prospects (2024)",
+    "originalChartUrl": "https://ourworldindata.org/grapher/share-of-children-vaccinated-against-measles?v=1&csvType=full&useColumnShortNames=false",
+    "selection": [
+      "World"
+    ]
+  },
+  "columns": {
+    "Share of one-year-olds who have had one dose of the measles vaccine": {
+      "titleShort": "Share of one-year-olds who have had one dose of the measles vaccine",
+      "titleLong": "Share of one-year-olds who have had one dose of the measles vaccine",
+      "descriptionShort": "Share of one-year-olds who have had the first dose of the measles vaccine in a given year.",
+      "descriptionKey": [
+        "Measles is one of the most contagious diseases. The first dose of measles vaccine is critical for building immunity. In countries where the national schedule recommends the first dose at 12 months or later based on local epidemiology, these estimates reflect the percentage of children who received their first dose as recommended.",
+        "This chart shows official estimates of national immunization coverage published by the WHO and UNICEF. The estimates include all WHO member states, even those that did not report 2023 data. For non-reporting countries, WHO uses statistical methods to extrapolate from previously reported data, ensuring global coverage can be assessed.",
+        "Global and regional vaccination coverage is calculated using population-weighted averages. In 2023, approximately 5% of countries did not report data, requiring extrapolation from their 2022 data to maintain complete global estimates.",
+        "These estimates combine several sources: official administrative data from health facilities, coverage surveys that meet WHO quality standards, and other relevant information like vaccine supply issues or schedule changes. The accuracy of these estimates depends on how complete and reliable each country’s reporting systems are."
+      ],
+      "shortUnit": "%",
+      "unit": "%",
+      "timespan": "1980-2024",
+      "type": "Numeric",
+      "owidVariableId": 1077440,
+      "shortName": "coverage__antigen_mcv1",
+      "lastUpdated": "2025-07-15",
+      "nextUpdate": "2026-07-15",
+      "citationShort": "WHO & UNICEF (2025); UN, World Population Prospects (2024) – processed by Our World in Data",
+      "citationLong": "WHO & UNICEF (2025); UN, World Population Prospects (2024) – processed by Our World in Data. “Share of one-year-olds who have had one dose of the measles vaccine” [dataset]. WHO & UNICEF, “WHO Immunization Data - Vaccination coverage”; United Nations, “World Population Prospects” [original data].",
+      "fullMetadata": "https://api.ourworldindata.org/v1/indicators/1077440.metadata.json"
+    }
+  },
+  "dateDownloaded": "2025-09-09",
+  "activeFilters": {}
+}

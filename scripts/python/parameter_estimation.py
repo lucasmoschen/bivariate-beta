@@ -278,6 +278,8 @@ class BivariateBeta:
         alpha_34 = alpha[2] + alpha[3]
         alpha_13 = alpha[0] + alpha[2]
         alpha_24 = alpha[1] + alpha[3]
+        if alpha_sum <= 0 or alpha_12 <= 0 or alpha_34 <= 0 or alpha_13 <= 0 or alpha_24 <= 0:
+            return np.inf
         loss = c[0]*g(m1, alpha_12/alpha_sum)
         loss += c[1]*g(m2, alpha_13/alpha_sum)
         loss += c[2]*g(v1, alpha_12*alpha_34/div)
@@ -305,7 +307,7 @@ class BivariateBeta:
         else:
             raise Exception('This loss function is not implemented. Please, implement it and let it as parameter.')
 
-    def method_moments_estimator_1(self, x, y, accept_zero=True):
+    def method_moments_estimator_1(self, x, y, accept_zero=True, nu=0.0):
         """
         Method of moments estimator of parameter alpha given the bivariate data (x,y) of size n.
         This method (MM1) solves the system and returns 0 whenever the solution is negative.
@@ -320,11 +322,16 @@ class BivariateBeta:
         """
         m1 = np.mean(x)
         m2 = np.mean(y)
-        v1 = np.var(x, ddof=1)
+        v1 = np.var(x, ddof=0)
         rho = np.corrcoef(x, y)[0,1]
-        alpha_hat = self._system_solution(m1, m2, v1, rho)
+
+        L = -min(m1*m2, (1-m1)*(1-m2)) / np.sqrt(m1*m2*(1-m1)*(1-m2))
+        U = (min(m1,m2) - m1*m2)/ np.sqrt(m1*m2*(1-m1)*(1-m2))
+        rho_tilde = min(U - nu, max(L + nu, rho))
+
+        alpha_hat = self._system_solution(m1, m2, v1, rho_tilde)
         if not accept_zero:
-            if sum(alpha_hat <= 0) > 0:
+            if rho <= L or rho >= U:
                 return np.ones(4) * np.nan
         return np.maximum(alpha_hat, 0)
 
@@ -344,8 +351,8 @@ class BivariateBeta:
         """
         m1 = np.mean(x)
         m2 = np.mean(y)
-        v1 = np.var(x, ddof=1)
-        v2 = np.var(y, ddof=1)
+        v1 = np.var(x, ddof=0)
+        v2 = np.var(y, ddof=0)
         rho = np.corrcoef(x, y)[0,1]
         denominator = np.sqrt(m1*m2*(1-m1)*(1-m2))
 
@@ -374,8 +381,8 @@ class BivariateBeta:
         """
         m1 = np.mean(x)
         m2 = np.mean(y)
-        v1 = np.var(x, ddof=1)
-        v2 = np.var(y, ddof=1)
+        v1 = np.var(x, ddof=0)
+        v2 = np.var(y, ddof=0)
         rho = np.corrcoef(x, y)[0,1]
         E = m2*(1-m1) - rho * np.sqrt(m1*m2*(1-m1)*(1-m2))
 
@@ -407,7 +414,7 @@ class BivariateBeta:
         alpha_hat[:2] = self._system_two_solution(m1, m2, alpha_hat[2], alpha_hat[3])
         return np.maximum(alpha_hat, 0)
 
-    def method_moments_estimator_4(self, x, y, alpha0, g=None, c=np.ones(5)):
+    def method_moments_estimator_4(self, x, y, g=None, c=np.ones(5)):
         """
         Method of moments estimator of parameter alpha given the bivariate data (x,y) of size n.
         This method (MM4) searches the best alpha minimizing the quadratic differences with respect to
@@ -422,10 +429,12 @@ class BivariateBeta:
         Returns: 
         | alpha_hat: estimator
         """
+        alpha0 = self.method_moments_estimator_1(x,y,nu=1e-8)
+
         m1 = np.mean(x)
         m2 = np.mean(y)
-        v1 = np.var(x, ddof=1)
-        v2 = np.var(y, ddof=1)
+        v1 = np.var(x, ddof=0)
+        v2 = np.var(y, ddof=0)
         rho = np.corrcoef(x, y)[0,1]
 
         if g is None:
@@ -548,10 +557,11 @@ class BivariateBeta:
         Returns
         | bootstrap_sample (4xB-array): estimated parameters for each resample.
         """
-        ro = np.random.RandomState(seed)
+        ro = np.random.default_rng(seed)
         index = ro.choice(range(len(x)), size=(len(x), B))
         X = x[index]
         Y = y[index]
+        self.XXX, self.YYY = X, Y
         pool = multiprocessing.Pool(processes=processes)
         estimating_b = partial(self._bootstrap_wrapper, X=X, Y=Y, alpha0=alpha0, x0=x0, method=method)
         bootstrap_sample = np.array(pool.map(estimating_b, range(B))).transpose()
@@ -633,9 +643,9 @@ class BivariateBeta:
                         K[2*k+i, 2*l+j] = np.mean((arr1 - arr1.mean()) * (arr2 - arr2.mean()))
 
         m1 = x.mean() 
-        v1 = x.var(ddof=1)
+        v1 = x.var(ddof=0)
         m2 = y.mean() 
-        v2 = y.var(ddof=1)
+        v2 = y.var(ddof=0)
 
         S = g(m1, v1, m2, v2)
         sigma = np.sqrt(nabla_g(m1, v1, m2, v2) @ K @ nabla_g(m1, v1, m2, v2))

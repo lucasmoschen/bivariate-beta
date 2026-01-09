@@ -1,0 +1,48 @@
+{
+  "chart": {
+    "title": "Share of one-year-olds vaccinated against diphtheria, tetanus and pertussis",
+    "subtitle": "Share of one-year-olds who received the third dose of the diphtheria, tetanus and pertussis vaccine (DTP3).",
+    "note": "Diphtheria can cause breathing problems, heart failure, paralysis, and even death. Tetanus causes painful muscle stiffness and lockjaw. Pertussis (whooping cough) causes severe coughing fits that can lead to pneumonia, seizures, and brain damage.",
+    "citation": "WHO & UNICEF (2025); UN, World Population Prospects (2024)",
+    "originalChartUrl": "https://ourworldindata.org/grapher/share-of-children-immunized-dtp3?v=1&csvType=full&useColumnShortNames=false",
+    "selection": [
+      "African Region (WHO)",
+      "European Region (WHO)",
+      "South-East Asia Region (WHO)",
+      "Western Pacific Region (WHO)",
+      "Eastern Mediterranean Region (WHO)",
+      "Region of the Americas (WHO)",
+      "Eastern Mediterranean (WHO)",
+      "Africa (WHO)",
+      "Europe (WHO)",
+      "Americas (WHO)",
+      "Western Pacific (WHO)",
+      "South-East Asia (WHO)"
+    ]
+  },
+  "columns": {
+    "Share of one-year-olds who have had three doses of the diphtheria, tetanus and pertussis vaccine": {
+      "titleShort": "Share of one-year-olds who have had three doses of the diphtheria, tetanus and pertussis vaccine",
+      "titleLong": "Share of one-year-olds who have had three doses of the diphtheria, tetanus and pertussis vaccine",
+      "descriptionShort": "Share of one-year-olds who have had three doses of the combined diphtheria, tetanus and [pertussis](#dod:pertussis) vaccine in a given year.",
+      "descriptionKey": [
+        "This chart shows official estimates of national immunization coverage published by the WHO and UNICEF. The estimates include all WHO member states, even those that did not report 2023 data. For non-reporting countries, WHO uses statistical methods to extrapolate from previously reported data, ensuring global coverage can be assessed.",
+        "Global and regional vaccination coverage is calculated using population-weighted averages. In 2023, approximately 5% of countries did not report data, requiring extrapolation from their 2022 data to maintain complete global estimates.",
+        "These estimates combine several sources: official administrative data from health facilities, coverage surveys that meet WHO quality standards, and other relevant information like vaccine supply issues or schedule changes. The accuracy of these estimates depends on how complete and reliable each country’s reporting systems are."
+      ],
+      "shortUnit": "%",
+      "unit": "%",
+      "timespan": "1980-2024",
+      "type": "Numeric",
+      "owidVariableId": 1077436,
+      "shortName": "coverage__antigen_dtpcv3",
+      "lastUpdated": "2025-07-15",
+      "nextUpdate": "2026-07-15",
+      "citationShort": "WHO & UNICEF (2025); UN, World Population Prospects (2024) – processed by Our World in Data",
+      "citationLong": "WHO & UNICEF (2025); UN, World Population Prospects (2024) – processed by Our World in Data. “Share of one-year-olds who have had three doses of the diphtheria, tetanus and pertussis vaccine” [dataset]. WHO & UNICEF, “WHO Immunization Data - Vaccination coverage”; United Nations, “World Population Prospects” [original data].",
+      "fullMetadata": "https://api.ourworldindata.org/v1/indicators/1077436.metadata.json"
+    }
+  },
+  "dateDownloaded": "2025-09-09",
+  "activeFilters": {}
+}

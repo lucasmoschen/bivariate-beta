@@ -1,0 +1,2514 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport"
+        content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, minimal-ui" />
+    <title>U.S. Presidential Election Results</title>
+    <!-- include Tailwind CSS -->
+    <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.16/dist/tailwind.min.css" rel="stylesheet" />
+    <style>
+        /* hide scroll bar */
+        /* html {
+            overflow-y: auto;
+        } */
+
+        body {
+            font-family: "Arial", sans-serif;
+        }
+
+        .nation,
+        .state,
+        .county {
+            fill: none;
+            stroke: #000000;
+            pointer-events: none;
+        }
+
+        .nation {
+            stroke-width: 0.4px;
+        }
+
+        .state {
+            stroke-width: 0.2px;
+        }
+
+        .county {
+            stroke: #000000;
+            stroke-width: 0.1px;
+            pointer-events: auto;
+        }
+
+        #state-title {
+            text-anchor: start;
+            /* Align text to the start */
+            font-size: 48px;
+            /* Bigger font size for better visibility */
+            font-weight: 900;
+            /* Very bold font weight */
+            fill: #333333;
+            /* Dark gray for a neutral and professional appearance */
+            stroke: white;
+            /* Add a stroke around the text for contrast */
+            stroke-width: 2px;
+            /* Width of the stroke */
+            paint-order: stroke fill;
+            /* Ensure stroke appears before the fill */
+            text-shadow: 2px 2px 5px rgba(0, 0, 0, 0.5);
+            /* Add a subtle shadow for better contrast */
+            pointer-events: none;
+            /* Prevent interaction with the text */
+            user-select: none;
+            /* Prevent text selection */
+            transition: opacity 0.3s ease-in-out;
+            /* Smooth transition when text changes */
+        }
+
+        .county:hover,
+        .highlighted-path {
+            stroke: #ffcc00;
+            /* A golden yellow for better contrast and aesthetics */
+            stroke-width: 2px;
+            /* Slightly thicker stroke to make it stand out */
+            fill: rgba(255, 204, 0, 0.2);
+            /* Add a subtle fill with transparency */
+            filter: drop-shadow(0px 0px 5px #ffcc00);
+            /* Add a glowing effect */
+            transition: all 0.3s ease-in-out;
+            /* Smooth transition for better aesthetics */
+        }
+
+        .dot:hover,
+        .highlighted-circle {
+            stroke: #ffcc00;
+            /* A golden yellow for better contrast and aesthetics */
+            stroke-width: 2px;
+            /* Slightly thicker stroke to make it stand out */
+            fill: rgba(255, 204, 0, 0.2);
+            /* Add a subtle fill with transparency */
+            filter: drop-shadow(0px 0px 5px #ffcc00);
+            /* Add a glowing effect */
+            transition: all 0.3s ease-in-out;
+            /* Smooth transition for better aesthetics */
+        }
+
+        .background {
+            fill: #fdfcfc;
+            fill-opacity: 0.7;
+        }
+
+        .bar text {
+            font-size: 10px;
+        }
+
+        .bar rect {
+            stroke: #000000;
+            stroke-width: 0.5px;
+        }
+
+        #county-legend {
+            text-anchor: middle;
+        }
+
+        /* John A. details Gomez dynamic details bar  */
+        #details {
+            z-index: 999;
+        }
+
+        #details .title {
+            font-size: 1.25vmin;
+        }
+
+        .e-title {
+            font-size: 1.5vmin;
+            font-weight: 700;
+        }
+
+        /* custom tooltip */
+        .tooltip {
+            top: 100px;
+            left: 100px;
+            /* -moz-border-radius: 5px;
+            border-radius: 5px; */
+            /*border: 2px solid #000;*/
+            box-shadow: -4px 0 12px 0 rgba(0, 0, 0, 0.05);
+            background: #ffffff;
+            background-color: #fff;
+            border: 1px solid #ccc;
+            border-radius: 3px;
+            opacity: 1;
+            /* color: white; */
+            padding: 10px;
+            /* min-width: 375px; */
+            min-width: 36.75vmin;
+            font-family: "Arial", sans-serif;
+            font-size: 1.25vmin;
+            line-height: 18pt;
+            font-weight: lighter;
+            visibility: visible;
+        }
+
+        .tooltip.right::before {
+            content: "";
+            display: block;
+            width: 0;
+            height: 0;
+            position: absolute;
+            opacity: 0.9;
+            border-top: 8px solid transparent;
+            border-bottom: 8px solid transparent;
+            /* border-left: 8px solid #333; */
+            right: -8px;
+            top: 35px;
+            /* arbitrarily set */
+        }
+
+        .tooltip.left::before {
+            content: "";
+            display: block;
+            width: 0;
+            height: 0;
+            position: absolute;
+            opacity: 0.9;
+            border-top: 8px solid transparent;
+            border-bottom: 8px solid transparent;
+            left: -8px;
+            /* border-right: 8px solid #333; */
+            top: 35px;
+            /* arbitrarily set */
+        }
+
+        /* tooltip table */
+        .tooltip-table {
+            /* table-layout: fixed; */
+            width: 100%;
+            /* max-width: 380px; */
+            /* min-width: 375px; */
+            max-width: 36.75vmin;
+            white-space: nowrap;
+            border-collapse: collapse;
+        }
+
+        .tooltip-table tr:not(:nth-child(1)) {
+            border-top: 0.5px solid #ccc;
+            border-collapse: collapse;
+        }
+
+        .tooltip-table td:not(:nth-child(1)) {
+            padding-left: 3px;
+        }
+
+        .tooltip-table td:nth-child(1) {
+            width: 1%;
+        }
+
+        /* state table */
+        .highlighted-cell {
+            background-color: #86a1c1;
+            color: white;
+            /* Adjust text color for better readability */
+            font-weight: bold;
+        }
+
+        .state-table-header {
+            background-color: #095591;
+            color: white;
+            font-weight: bold;
+        }
+
+        .detail-table-header {
+            background-color: #095591;
+            color: white;
+            font-weight: bold;
+        }
+
+        /* radio buttons */
+        .radio-buttons-container {
+            position: absolute;
+            /* Position relative to the parent SVG */
+            bottom: 10px;
+            /* Adjust distance from the bottom edge of the SVG */
+            left: 10px;
+            /* Adjust distance from the right edge of the SVG */
+            z-index: 10;
+            /* Keep it on top of other content */
+            background-color: #ffffff;
+            padding: 10px;
+            border-radius: 5px;
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+            border: 2px solid #095591;
+        }
+
+        .progress {
+            z-index: 100;
+        }
+
+        /* reset button */
+        /* taken from http://materialdesignblog.com/creating-a-simple-material-design-action-button-with-css/ */
+        /* uses Material Design principles, which is a plus */
+        .fab {
+            position: absolute;
+            /* Position relative to the parent SVG */
+            bottom: 10px;
+            /* Adjust distance from the bottom edge of the SVG */
+            right: 10px;
+            /* Adjust distance from the right edge of the SVG */
+            z-index: 100;
+            /* Keep it on top of other content */
+            width: 70px;
+            height: 70px;
+            background-color: #095591;
+            border-radius: 50%;
+            box-shadow: 0 6px 10px 0 #666;
+            transition: all 0.1s ease-in-out;
+            font-size: 50px;
+            color: #ffffff;
+            text-align: center;
+            line-height: 70px;
+            cursor: pointer;
+            padding: 10px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+
+        .fab:hover {
+            box-shadow: 0 6px 14px 0 #666;
+            transform: scale(1.05);
+        }
+
+        .app-bar {
+            background-color: #095591;
+        }
+    </style>
+</head>
+
+<body>
+    <div id="app">
+        <div class="min-h-screen bg-gray-100 flex flex-col">
+            <!-- app bar -->
+            <header class="app-bar fixed top-0 left-0 right-0 text-white shadow-md h-16 flex items-center px-4">
+                <div class="text-2xl font-bold">
+                    United States Presidential Election Results, 2024
+                </div>
+                <div class="flex-grow"></div>
+                <div class="flex space-x-4">
+                    <a href="https://github.com/tonmcg" target="_blank" class="hover:text-gray-300">
+                        <svg class="w-9 h-9" xmlns="http://www.w3.org/2000/svg" fill="#ffffff" viewBox="0 0 24 24">
+                            <path
+                                d="M12 2C6.48 2 2 6.48 2 12c0 4.42 2.87 8.167 6.839 9.487.5.092.683-.217.683-.483 0-.237-.009-.868-.013-1.703-2.782.605-3.369-1.342-3.369-1.342-.454-1.154-1.11-1.462-1.11-1.462-.909-.621.069-.609.069-.609 1.003.071 1.53 1.031 1.53 1.031.892 1.529 2.341 1.087 2.91.831.092-.647.35-1.087.637-1.337-2.22-.253-4.555-1.113-4.555-4.95 0-1.093.39-1.988 1.029-2.688-.104-.254-.446-1.27.099-2.647 0 0 .84-.269 2.75 1.025a9.549 9.549 0 0 1 5.003 0c1.91-1.294 2.75-1.025 2.75-1.025.545 1.377.202 2.393.1 2.647.64.7 1.028 1.595 1.028 2.688 0 3.848-2.337 4.695-4.563 4.945.359.309.678.92.678 1.855 0 1.337-.012 2.416-.012 2.743 0 .267.18.578.688.48A10.013 10.013 0 0 0 22 12c0-5.52-4.48-10-10-10z">
+                            </path>
+                        </svg>
+                    </a>
+                    <a href="https://x.com/tonmcg" target="_blank" class="hover:text-gray-300">
+                        <svg class="w-9 h-9" xmlns="http://www.w3.org/2000/svg" fill="#ffffff" viewBox="0 0 24 24">
+                            <path
+                                d="M22.46 6c-.77.35-1.6.59-2.46.7a4.16 4.16 0 0 0 1.84-2.3 8.1 8.1 0 0 1-2.64 1.02 4.09 4.09 0 0 0-7.08 3.73A11.62 11.62 0 0 1 3.17 5.16a4.11 4.11 0 0 0 1.27 5.47 4.05 4.05 0 0 1-1.85-.51v.05a4.1 4.1 0 0 0 3.28 4 4.09 4.09 0 0 1-1.84.07 4.12 4.12 0 0 0 3.83 2.84A8.2 8.2 0 0 1 2 18.55a11.5 11.5 0 0 0 6.29 1.84c7.55 0 11.67-6.26 11.67-11.67 0-.18-.01-.35-.02-.53a8.32 8.32 0 0 0 2.07-2.12z">
+                            </path>
+                        </svg>
+                    </a>
+                    <a href="https://www.linkedin.com/in/tonmcg" target="_blank" class="hover:text-gray-300">
+                        <svg class="w-9 h-9" xmlns="http://www.w3.org/2000/svg" fill="#ffffff" viewBox="0 0 24 24">
+                            <path
+                                d="M20.452 20.452H16.9v-4.937c0-1.177-.023-2.691-1.643-2.691-1.644 0-1.896 1.284-1.896 2.61v5.018H9.91V9h3.4v1.561h.049c.476-.9 1.635-1.845 3.362-1.845 3.59 0 4.254 2.362 4.254 5.434v6.302zM5.337 7.433a1.967 1.967 0 1 1 0-3.933 1.967 1.967 0 0 1 0 3.933zM6.937 20.452H3.737V9h3.2v11.452zM22.227 0H1.772C.789 0 0 .784 0 1.748v20.505C0 23.217.79 24 1.772 24h20.455C23.21 24 24 23.217 24 22.253V1.748C24 .784 23.21 0 22.227 0z">
+                            </path>
+                        </svg>
+                    </a>
+                    <a href="https://www.emdata.ai" target="_blank" class="hover:text-gray-300">
+                        <img alt="emdata Logo" src="https://avatars1.githubusercontent.com/u/58564118?s=200&v=4"
+                            class="w-9 h-9" />
+                    </a>
+                </div>
+            </header>
+
+            <main class="flex flex-col w-full h-full pt-16">
+                <div class="w-full p-4">
+                    <div class="tooltip" style="position: absolute; z-index: 100; visibility: hidden;"></div>
+                    <!-- Content container -->
+                    <div class="w-full p-4">
+                        <!-- Card -->
+                        <div class="bg-white shadow rounded-lg overflow-hidden" :style="`min-height:${map.height}px`">
+                            <!-- Card Title -->
+                            <div class="p-4 border-b">
+                                <div class="flex justify-between items-center">
+                                    <div>
+                                        <p class="text-2xl font-bold">
+                                            Map of United States Counties, Alaska Legislative Districts, and District of
+                                            Columbia Wards
+                                        </p>
+                                        <!-- subtitle here in smaller font -->
+                                        <p class="text-sm text-gray-700">
+                                            Hover over and click on the map and table to explore the election results.
+                                        </p>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Card Text -->
+                            <div class="p-4">
+                                <div class="grid grid-cols-12 gap-4">
+                                    <div class="col-span-2">
+                                        <!-- State Table -->
+                                        <div id="state-table" class="overflow-auto border border-gray-300 rounded-lg">
+                                            <table class="min-w-full table-auto border-collapse border border-gray-300">
+                                                <thead>
+                                                    <tr class="state-table-header">
+                                                        <th colspan="2"
+                                                            class="px-2 py-1 text-center border border-gray-300">
+                                                            State
+                                                        </th>
+                                                    </tr>
+                                                </thead>
+                                                <tbody>
+                                                    <tr v-for="(stateRow, rowIndex) in splitStates" :key="rowIndex">
+                                                        <td v-for="state in stateRow" :key="state.id"
+                                                            :class="{'bg-blue-300 text-white': state.id === activeStateId,}"
+                                                            class="state-cell px-2 py-1 text-center cursor-pointer hover:bg-blue-100 border border-gray-300"
+                                                            @click="(e) => toggleStateFilter(state, e, this)">
+                                                            {{ state.name }}
+                                                        </td>
+                                                    </tr>
+                                                </tbody>
+                                            </table>
+                                        </div>
+                                    </div>
+                                    <div class="col-span-6">
+                                        <div class="overflow-auto border border-gray-300 rounded-lg"
+                                            :style="`position: relative; width: 100%; height: 100%; min-height:${map.height}px`">
+                                            <!-- map visualization -->
+                                            <svg id="map"></svg>
+                                            <div class="radio-buttons-container">
+                                                <label class="block text-gray-700 font-medium mb-2 text-lg">Select
+                                                    map</label>
+                                                <div class="flex space-x-4" @change="renderLayer">
+                                                    <label class="inline-flex items-center">
+                                                        <input type="radio" name="mapType" value="choropleth"
+                                                            v-model="selectedMap"
+                                                            class="form-radio text-blue-600 focus:ring-blue-500 focus:ring-4 cursor-pointer" />
+                                                        <span class="ml-2 text-gray-700">Choropleth (filled)</span>
+                                                    </label>
+                                                    <label class="inline-flex items-center">
+                                                        <input type="radio" name="mapType" value="dotDensity"
+                                                            v-model="selectedMap"
+                                                            class="form-radio text-blue-600 focus:ring-blue-500 focus:ring-4 cursor-pointer" />
+                                                        <span class="ml-2 text-gray-700">Dot Density</span>
+                                                    </label>
+                                                </div>
+                                            </div>
+                                            <!-- Material design-styled reset button -->
+                                            <div v-show="isZoomed" class="fab" style="opacity: 1;"
+                                                @click="(e) => setLayers(null, 'United States', e)">
+                                                ↺</div>
+                                        </div>
+                                    </div>
+                                    <div class=" col-span-4">
+                                        <!-- Details Table -->
+                                        <div id="detail-table" class="overflow-auto border border-gray-300 rounded-lg">
+                                            <table class="min-w-full table-auto border-collapse border border-gray-300">
+                                                <thead>
+                                                    <tr class="detail-table-header">
+                                                        <th class="px-4 py-2 text-left border border-gray-300"
+                                                            style="width: 30%;">Candidate
+                                                        </th>
+                                                        <th class="px-4 py-2 text-left border border-gray-300"
+                                                            style="width: 10%;">Party
+                                                        </th>
+                                                        <th class="px-4 py-2 text-right border border-gray-300"
+                                                            style="width: 15%;">Total Votes
+                                                        </th>
+                                                        <th class="px-4 py-2 text-left border border-gray-300"
+                                                            style="width: 45%;">
+                                                            Percentage</th>
+                                                    </tr>
+                                                </thead>
+                                                <tbody>
+                                                    <!-- Democrat Row -->
+                                                    <tr>
+                                                        <td
+                                                            class="px-4 py-2 flex items-center gap-4 border border-gray-300">
+                                                            <img src="https://static01.nyt.com/elections-assets/2024/headshots/AK-G-P-2024-11-05-harris-k-44992.png?size=thumb&auto=webp"
+                                                                alt="Democrat Candidate"
+                                                                class="w-10 h-10 rounded-full" />
+                                                            <span>Kamala R. Harris</span>
+                                                        </td>
+                                                        <td class="px-4 py-2 border border-gray-300">Democrat
+                                                        </td>
+                                                        <td class="px-4 py-2 text-right border border-gray-300">
+                                                            {{formatValue(demVotesTweened, "integer")}}</td>
+                                                        <td class="px-4 py-2 border border-gray-300">
+                                                            <div class="flex items-center gap-4">
+                                                                <span>{{formatValue(demShareTweened,
+                                                                    "percent")}}</span>
+                                                                <svg class="w-32 h-4" viewBox="0 0 101 10"
+                                                                    xmlns="http://www.w3.org/2000/svg">
+                                                                    <g class="bar">
+                                                                        <rect x="0" y="0"
+                                                                            :width="`${demShareTweened * 100}`"
+                                                                            height="10"
+                                                                            :fill="color(demShareTweened)" />
+                                                                        <rect :x="`${demShareTweened * 100}`" y="0"
+                                                                            :width="`${(1 - demShareTweened) * 100}`"
+                                                                            height="10" fill="#E5E7EB" />
+                                                                    </g>
+                                                                </svg>
+                                                            </div>
+                                                        </td>
+                                                    </tr>
+                                                    <!-- Republican Row -->
+                                                    <tr>
+                                                        <td
+                                                            class="px-4 py-2 flex items-center gap-4 border border-gray-300">
+                                                            <img src="https://static01.nyt.com/elections-assets/2024/headshots/NV-R-P-president-2024-02-08-trump-d-18284.png?size=thumb&auto=webp"
+                                                                alt="Republican Candidate"
+                                                                class="w-10 h-10 rounded-full" />
+                                                            <span>Donald J. Trump</span>
+                                                        </td>
+                                                        <td class="px-4 py-2 border border-gray-300">Republican
+                                                        </td>
+                                                        <td class="px-4 py-2 text-right border border-gray-300">
+                                                            {{formatValue(gopVotesTweened, "integer")}}</td>
+                                                        <td class="px-4 py-2 border border-gray-300">
+                                                            <div class="flex items-center gap-4">
+                                                                <span>{{formatValue(gopShareTweened,
+                                                                    "percent")}}</span>
+                                                                <svg class="w-32 h-4" viewBox="0 0 101 10"
+                                                                    xmlns="http://www.w3.org/2000/svg">
+                                                                    <g class="bar">
+                                                                        <rect x="0" y="0"
+                                                                            :width="`${gopShareTweened * 100}`"
+                                                                            height="10"
+                                                                            :fill="color(-gopShareTweened)" />
+                                                                        <rect :x="`${gopShareTweened * 100}`" y="0"
+                                                                            :width="`${(1 - gopShareTweened) * 100}`"
+                                                                            height="10" fill="#E5E7EB" />
+                                                                    </g>
+                                                                </svg>
+                                                            </div>
+                                                        </td>
+                                                    </tr>
+                                                </tbody>
+                                                <tfoot>
+                                                    <tr>
+                                                        <td
+                                                            class="px-4 py-2 flex items-center gap-4 border border-gray-300">
+                                                            {{`Total
+                                                            ${activeStateId ? states.filter(s => s.id ===
+                                                            activeStateId)[0].name : ''} Votes`}}</td>
+                                                        <td class="px-4 py-2 border border-gray-300"></td>
+                                                        <td class="px-4 py-2 text-right border border-gray-300">
+                                                            {{formatValue(gopVotesTweened + demVotesTweened,
+                                                            "integer")}}</td>
+                                                        <td class="px-4 py-2 border border-gray-300">
+                                                            {{formatValue(gopShareTweened - demShareTweened,
+                                                            "percent")}} percentage point difference</td>
+                                                    </tr>
+                                                </tfoot>
+                                            </table>
+                                        </div>
+                                        <div id="detailBar" class="px-4 py-2">
+
+                                        </div>
+                                        <div id="county-table" v-show="activeStateId"
+                                            class="overflow-auto border border-gray-300 rounded-lg mt-4"
+                                            :style="`max-height: ${map.height - 214 - 86}px; overflow-y: auto;`">
+                                            <table class="min-w-full table-auto border-collapse border border-gray-300">
+                                                <thead class="sticky top-0 bg-white">
+                                                    <tr class="detail-table-header">
+                                                        <th class="px-4 py-2 text-left border border-gray-300 cursor-pointer"
+                                                            style="width: 35%;">
+                                                            County
+                                                        </th>
+                                                        <th class="px-4 py-2 text-right border border-gray-300 cursor-pointer"
+                                                            style="width: 20%;">
+                                                            Total Votes
+                                                        </th>
+                                                        <th class="px-4 py-2 text-left border border-gray-300 cursor-pointer"
+                                                            style="width: 45%;">
+                                                            Percentage
+                                                        </th>
+                                                    </tr>
+                                                </thead>
+                                                <tbody>
+                                                </tbody>
+                                                <!-- <tfoot class="sticky bottom-0 bg-white">
+                                                </tfoot> -->
+                                            </table>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <!-- Card Actions -->
+                                <div class="p-4">
+                                    <div class="flex justify-between items-center">
+                                        <div class="flex justify-start">
+                                            <span>
+                                                Sources:
+                                                <a href="https://www.foxnews.com/elections/2024/general-results"
+                                                    class="text-blue-500 underline" target="_blank"><em>Fox
+                                                        News</em></a>,
+                                                <a href="https://electionresults.dcboe.org/election_results/2024-General-Election"
+                                                    class="text-blue-500 underline" target="_blank"><em>District
+                                                        of
+                                                        Columbia Board of
+                                                        Elections</em></a>, and
+                                                <a href="https://www.elections.alaska.gov/enr/"
+                                                    class="text-blue-500 underline" target="_blank"><em>Alaska
+                                                        Division of Elections</em></a>.
+                                                <br />Data compiled by:
+                                                <a href="https://github.com/tonmcg/US_County_Level_Election_Results_08-24/blob/master/2024_US_County_Level_Presidential_Results.csv"
+                                                    class="text-blue-500 underline" target="_blank">Tony
+                                                    McGovern</a>.
+                                            </span>
+                                        </div>
+                                        <div class="text-sm flex justify-end">
+                                            <span>
+                                                Alaska data last updated: {{ alaska.lastupdated }}.
+                                                <br />Washington D.C. data last updated: {{ dc.lastupdated }}.
+                                                <br />Continental U.S. data last updated: {{
+                                                continental.lastupdated
+                                                }}.
+
+                                            </span>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                    </div>
+                    <!-- Progress indicator -->
+                    <div class="progress fixed inset-0 flex items-center justify-center bg-gray-800 bg-opacity-50"
+                        v-if="!counties.length">
+                        <svg class="animate-spin h-32 w-32 text-blue-500" xmlns="http://www.w3.org/2000/svg" fill="none"
+                            viewBox="0 0 24 24">
+                            <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="1">
+                            </circle>
+                            <path class="opacity-75" fill="#ffffff" d="M4 12a8 8 0 018-8v4a4 4 0 00-4 4H4z">
+                            </path>
+                        </svg>
+                    </div>
+            </main>
+            <!-- page footer -->
+            <footer class="bg-gray-600 text-white absolute bottom-0 w-full">
+                <div class="flex justify-center items-center py-4">
+                    <span>&copy; {{ new Date().getFullYear() }} — <strong>Tony McGovern</strong></span>
+                </div>
+            </footer>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/vue@2.x/dist/vue.js" type="text/javascript"></script>
+    <script src="https://cdn.jsdelivr.net/npm/jszip@3.7.1/dist/jszip.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/danfojs@1.1.2/lib/bundle.min.js"></script>
+    <script src="https://d3js.org/d3.v7.min.js" type="text/javascript"></script>
+    <script src="https://unpkg.com/topojson@3" type="text/javascript"></script>
+    <script defer type="text/javascript">
+        "use strict";
+
+        new Vue({
+            el: "#app",
+            data: () => ({
+                domain: [-1, 1], // set the domain for all scales from -1 to 1
+                tooltip: {
+                    visibility: "hidden",
+                    position: { x: 0, y: 0 },
+                    content: "",
+                },
+                gopVotesTweened: 0,
+                demVotesTweened: 0,
+                gopShareTweened: 0,
+                demShareTweened: 0,
+                selectedMap: "dotDensity",
+                activeStateId: null, // Tracks the currently active state
+                districtObj: {},
+                counties: [],
+                states: [],
+                geographies: {
+                    censusYear: 2024, // base year for the county gazetteer files
+                    suzeraintyFips: ["02", "11", "60", "66", "69", "72", "74", "78"], // states or territories that we are not getting election results for
+                },
+                alaska: {
+                    lastupdated: ""
+                },
+                dc: {
+                    lastupdated: ""
+                },
+                continental: {
+                    lastupdated: new Date().toLocaleString(),
+                },
+                map: {
+                    width: 0,
+                    height: 0
+                },
+                sortOrderColumn: null,
+                sortOrderAscending: true,
+                transition: {
+                    duration: 1500,
+                    ease: d3.easeExpInOut // Ease function applied here
+                },
+                isZoomed: false,
+                allNationFeatures: {},
+                allStateFeatures: {},
+                allCountyFeatures: {},
+            }),
+            watch: {
+                gopVotes: function (newVal) {
+                    this.animateValue("gopVotesTweened", newVal);
+                },
+                demVotes: function (newVal) {
+                    this.animateValue("demVotesTweened", newVal);
+                },
+                gopShare: function (newVal) {
+                    this.animateValue("gopShareTweened", newVal);
+                },
+                demShare: function (newVal) {
+                    this.animateValue("demShareTweened", newVal);
+                },
+            },
+            computed: {
+                filteredCounties: function () {
+                    return this.activeStateId ? this.counties.filter((f) => f.startsWith(this.activeStateId)) : this.counties;
+                },
+                filteredFeatures: function () { // filter features based on the active state
+                    return this.activeStateId ? this.allCountyFeatures.filter(d => {
+                        return d.id.startsWith(this.activeStateId)
+                    }) : this.allCountyFeatures;
+                },
+                gopVotes: function () {
+                    return this.counties.length > 60 ? d3.sum(
+                        this.filteredCounties,
+                        (r) => this.districtObj[r]["GOP"]
+                    ) || 0 : 0;
+                },
+                demVotes: function () {
+                    return this.counties.length > 60 ? d3.sum(
+                        this.filteredCounties,
+                        (r) => this.districtObj[r]["Dem."]
+                    ) || 0 : 0;
+                },
+                gopShare: function () {
+                    return this.gopVotes / (this.gopVotes + this.demVotes) || 0;
+                },
+                demShare: function () {
+                    return this.demVotes / (this.gopVotes + this.demVotes) || 0;
+                },
+                color: function () {
+                    return d3
+                        .scaleSequential()
+                        .interpolator(d3.interpolateRdBu)
+                        .domain(this.domain);
+                },
+                wScale: function () {
+                    return d3
+                        .scaleLinear()
+                        .domain(this.domain)
+                        .range([-this.map.width / 3, this.map.width / 3]);
+                },
+                path: function () {
+                    // Define path projection
+                    return d3.geoPath().projection(null);
+                },
+                center: function () {
+                    const nation = d3.select(".nation");
+                    // Calculate and apply initial center position
+                    const center = [
+                        this.map.width / 2 - this.path.centroid(nation.datum())[0], // Center X
+                        this.map.height / 2 - this.path.centroid(nation.datum())[1], // Center Y
+                    ];
+
+                    return center;
+
+                },
+                countyTableWidth: function () {
+                    const table = document.querySelector('#county-table');
+                    const width = table.offsetWidth || 0;
+                    return width > 810 ? width : window.innerWidth * 15 / 50; // portion of the innerWidth of the window
+                },
+                stateTableHeight: function () {
+                    const table = document.querySelector('#state-table');
+                    const height = table.offsetHeight || 0;
+                    return height > 600 ? height : window.innerHeight * 43 / 64; // portion of the innerHeight of the window
+                },
+                mapWidth: function () {
+                    const div = document.querySelector('.col-span-6');
+                    const width = div.offsetWidth - 2 || 0;
+                    return width > 300 ? width : window.innerWidth * 24 / 50; // portion of the innerWidth of the window
+                },
+                zoom: function () {
+                    return d3.zoom()
+                        .scaleExtent([1, 24])
+                        .on("zoom", this.zoomed);
+                },
+                sequentialScale: function () {
+                    return d3
+                        .scaleSequential()
+                        .interpolator(d3.interpolateRdBu)
+                        .domain(this.domain);
+                },
+                // Split states into rows with two columns
+                splitStates: function () {
+                    const sorted_states = this.states.length < 51 ? [] : this.states.sort((a, b) => a.name.localeCompare(b.name));
+
+                    const split_states = sorted_states.reduce((rows, state, index) => {
+                        if (index % 2 === 0) rows.push([]);
+                        rows[rows.length - 1].push(state);
+                        return rows;
+                    }, []);
+
+                    return split_states;
+                },
+                sortedCounties() {
+                    if (!this.sortOrderColumn) return this.filteredCounties;
+
+                    const sorted = [...this.filteredCounties].sort((a, b) => {
+                        const col = this.sortOrderColumn === "Percentage" ? "% of Total Vote, GOP" : this.sortOrderColumn;
+                        const districtA = this.districtObj[a];
+                        const districtB = this.districtObj[b];
+                        if (typeof districtA[col] === "string") {
+                            return this.sortOrderAscending
+                                ? districtA[col].localeCompare(districtB[col])
+                                : districtB[col].localeCompare(districtA[col]);
+                        } else {
+                            return this.sortOrderAscending ? districtA[col] - districtB[col] : districtB[col] - districtA[col];
+                        }
+                    });
+
+                    return sorted;
+                },
+            },
+            mounted: async function () {
+                this.setMapDimensions();
+                await this.fetchUSGeography();
+                this.initializeMap();
+                const censusCounties = await this.getCensusCounties();
+                const censusStates = await this.getCensusStates();
+                const censusGeographies = this.mergeCensusGeographies(
+                    censusCounties,
+                    censusStates
+                );
+                const dcGeographies = await this.getDCGeographies();
+                await this.fetchDCResults(dcGeographies);
+                await this.fetchDCUpdatedDate();
+                const akGeographies = await this.getAlaskaGeographies();
+                await this.fetchAlaskaResults(akGeographies);
+                await this.fetchElectionResults(censusStates, censusGeographies);
+                this.renderLayer();
+                this.createBars();
+                this.bindHover();
+                if (this.counties.length > 60) { // arbitrarily set threshold
+                    setTimeout(() => {
+                        this.selectedMap = "choropleth";
+                        this.renderLayer();
+                    }, 3000);
+                }
+            },
+            methods: {
+                animateValue(property, newValue) {
+                    const startValue = this[property];
+                    const interpolator = d3.interpolateNumber(startValue, newValue);
+
+                    d3.select({})
+                        .transition()
+                        .duration(this.transition.duration)
+                        .ease(this.transition.ease) // Ease function applied here
+                        .tween(property, () => (t) => {
+                            this[property] = interpolator(t);
+                        });
+                },
+                async getCensusCounties() {
+                    const that = this;
+                    // Enter base year for the county gazetteer files
+                    const censusYear = this.geographies.censusYear;
+
+                    // Base URL where all the county gazetteer files live
+                    const gazetteerUrl = `https://us-election-server-2ae36243a2a4.herokuapp.com/census/gazetteer/${censusYear}`;
+
+                    const censusCounties = async function parseCountyGeographyData(censusGazCounties) {
+
+                        // Function to fetch and parse a single county file
+                        async function fetchCountyFile(countyFileName) {
+                            const response = await fetch(gazetteerUrl + '/' + countyFileName);
+                            const csvText = await response.text();
+                            const parsedData = d3.dsvFormat('\t').parse(csvText, function (d) {
+                                return {
+                                    geoid: d['GEOID'],
+                                    c_county_name: d['NAME']
+                                };
+                            });
+                            return parsedData;
+                        }
+
+                        // Read each county file CSV
+                        const censusCountyFilesPromises = censusGazCounties.map(file => fetchCountyFile(file.county_file_name));
+                        const censusCountyFiles = await Promise.all(censusCountyFilesPromises);
+
+                        // Combine into a single array
+                        const censusCounties = [].concat(...censusCountyFiles);
+
+                        // Create state FIPS codes from the 5-digit 'geoid'
+                        censusCounties.forEach(county => {
+                            county.state_fips = county.geoid.slice(0, 2);
+                        });
+
+                        // Log the result
+                        console.log('Shape:', censusCounties.length);
+                        console.log('Data Types:', {
+                            geoid: typeof censusCounties[0].geoid,
+                            c_county_name: typeof censusCounties[0].c_county_name,
+                            state_fips: typeof censusCounties[0].state_fips
+                        });
+                        console.log('First 100 Entries:', censusCounties.slice(0, 100));
+
+                        return censusCounties;
+                    }
+
+                    const censusGazCounties = async function getCountyGazFiles() {
+                        // Make an HTTP request for the page
+                        const response = await fetch(gazetteerUrl, {
+                            method: 'GET',
+                            headers: { "Accept": "application/json" }
+                        });
+
+                        // Parse the page and return a DOM tree
+                        const pageContent = await response.text();
+                        const parser = new DOMParser();
+                        const doc = parser.parseFromString(pageContent, 'text/html');
+
+                        // Use XPath to return a list of link texts ('a' elements within the 'table' element) from the DOM
+                        const xpathResult = doc.evaluate('//td/a/text()', doc, null, XPathResult.ORDERED_NODE_SNAPSHOT_TYPE, null);
+                        const gazetteerFiles = [];
+                        for (let i = 0; i < xpathResult.snapshotLength; i++) {
+                            gazetteerFiles.push(xpathResult.snapshotItem(i).nodeValue);
+                        }
+
+                        // Filter the list to return only county file names
+                        const countyFiles = gazetteerFiles.filter(c => /.*counties.*\.txt/.test(c));
+
+                        // Convert the list to an array of objects
+                        const countyFilesSeries = countyFiles.map(fileName => ({ county_file_name: fileName }));
+
+                        // Filter out Alaska and these Suzerainty entities
+                        const censusGazCounties = countyFilesSeries.filter(file => {
+                            const match = file.county_file_name.match(/_(\d{2})\.txt/);
+                            return match && !that.geographies.suzeraintyFips.includes(match[1]);
+                        });
+
+                        // Log the result
+                        console.log('Shape:', censusGazCounties.length);
+                        console.log('Data Types:', censusGazCounties.map(file => typeof file.county_file_name));
+                        console.log('First 100 Entries:', censusGazCounties.slice(0, 100));
+
+                        return censusGazCounties;
+                    }
+
+                    return await censusCounties(await censusGazCounties());
+                },
+                async getCensusGeograhpies() {
+                    const censusGeographies = await d3.csv(
+                        "2024_us_census_geographies.csv"
+                    );
+
+                    return censusGeographies;
+                },
+                async getCensusStates() {
+
+                    // Fetch the JSON data
+                    const url = "https://us-election-server-2ae36243a2a4.herokuapp.com/census/state_data";
+                    const response = await fetch(url, { method: "GET" });
+                    const data = await response.text();
+                    // Parse the CSV data using d3.dsv
+                    const allCensusStates = d3.dsvFormat('|').parse(data, function (d) {
+                        return {
+                            state_fips: d.STATE,
+                            state_abbr: d.STUSAB,
+                            c_state_name: d.STATE_NAME
+                        };
+                    });
+
+                    // Filter out Alaska and these Suzerainty entities
+                    const censusStates = allCensusStates.filter(state => !this.geographies.suzeraintyFips.includes(state.state_fips));
+
+                    this.states = censusStates.map(state => ({
+                        id: state.state_fips,
+                        name: state.c_state_name
+                    }));
+
+                    return censusStates;
+                },
+                mergeCensusGeographies(censusCounties, censusStates) {
+                    // Convert the input arrays to DataFrames
+                    const censusCountiesDf = new dfd.DataFrame(censusCounties);
+                    const censusStatesDf = new dfd.DataFrame(censusStates);
+
+                    // Select the relevant columns from censusStates
+                    const selectedCensusStatesDf = censusStatesDf.loc({
+                        columns: ["state_fips", "c_state_name"]
+                    });
+
+                    // Perform a left join on 'state_fips'
+                    const countyStateDf = dfd.merge({
+                        left: censusCountiesDf,
+                        right: selectedCensusStatesDf,
+                        on: ["state_fips"],
+                        how: "left"
+                    });
+
+                    // Drop the 'state_fips' column
+                    const censusGeographies = countyStateDf.drop({ columns: ["state_fips"], axis: 1 });
+
+                    // Log the shape and data types of the resulting DataFrame
+                    console.log("Shape:", censusGeographies.shape);
+                    console.log("Data Types:", censusGeographies.ctypes);
+
+                    // Print the first 100 rows of the resulting DataFrame
+                    censusGeographies.head(100).print();
+
+                    // convert back to JSON and return
+                    return dfd.toJSON(censusGeographies);
+                },
+                async getDCGeographies() {
+
+                    // Download the zip file content into memory
+                    const url = `https://us-election-server-2ae36243a2a4.herokuapp.com/census/gazetteer/${this.geographies.censusYear}/dc_sldu`;
+                    const response = await fetch(url, { method: "GET" });
+                    const arrayBuffer = await response.arrayBuffer();
+                    const nationalGazetteerZip = new Uint8Array(arrayBuffer);
+
+                    // Open the zip file from the in-memory content
+                    const zip = await JSZip.loadAsync(nationalGazetteerZip);
+                    const unzippedFiles = Object.keys(zip.files);
+
+                    // Find the tab-delimited text file (assuming it's a .txt file)
+                    let tabDelimitedFile = null;
+                    for (const file of unzippedFiles) {
+                        if (file.endsWith(".txt")) {
+                            tabDelimitedFile = file;
+                            break;
+                        }
+                    }
+
+                    if (!tabDelimitedFile) {
+                        console.error("No tab-delimited text file found.");
+                        return;
+                    }
+
+                    // Read the tab-delimited text file content
+                    const fileContent = await zip.file(tabDelimitedFile).async("string");
+
+                    // Parse the tab-delimited text file using d3
+                    const nationalsldusts = d3.dsvFormat('\t').parse(fileContent, function (d) {
+                        return {
+                            c_state_name: "District of Columbia", // Add District of Columbia name to state_name column
+                            geoid: d['GEOID'],
+                            c_sldust_name: d['NAME']
+                        };
+                    });
+                    // Convert the national sldusts data to a DataFrame
+                    const nationalsldusts_df = new dfd.DataFrame(nationalsldusts, {
+                        index: null,
+                        columns: ["c_state_name", "geoid", "c_sldust_name"],
+                        dtypes: ["string", "string", "string"]
+                    });
+
+                    // filter the national sldusts dataframe for District of Columbia and reset the index
+                    let dcGeographies = nationalsldusts_df.loc({
+                        rows: nationalsldusts_df["geoid"].map(
+                            (geo) => geo.startsWith("11")
+                        ),
+                    }).resetIndex({ drop: true });
+
+                    // Reorder columns
+                    dcGeographies = dcGeographies.loc({
+                        columns: ["c_state_name", "geoid", "c_sldust_name"]
+                    });
+                    // Log the shape and data types of the resulting DataFrame
+                    console.log("Shape:", dcGeographies.shape);
+                    console.log("Data Types:", dcGeographies.ctypes);
+
+                    // Print the first 100 rows of the resulting DataFrame
+                    dcGeographies.head(100).print();
+
+                    this.states.push({
+                        id: "11",
+                        name: "District of Columbia"
+                    });
+
+                    // convert back to JSON and return
+                    return dfd.toJSON(dcGeographies);
+                },
+                async getAlaskaGeographies() {
+
+                    // Download the zip file content into memory
+                    const url = `https://us-election-server-2ae36243a2a4.herokuapp.com/census/gazetteer/${this.geographies.censusYear}/ak_sldl`;
+                    const response = await fetch(url, { method: "GET" });
+                    const arrayBuffer = await response.arrayBuffer();
+                    const nationalGazetteerZip = new Uint8Array(arrayBuffer);
+
+                    // Open the zip file from the in-memory content
+                    const zip = await JSZip.loadAsync(nationalGazetteerZip);
+                    const unzippedFiles = Object.keys(zip.files);
+
+                    // Find the tab-delimited text file (assuming it's a .txt file)
+                    let tabDelimitedFile = null;
+                    for (const file of unzippedFiles) {
+                        if (file.endsWith(".txt")) {
+                            tabDelimitedFile = file;
+                            break;
+                        }
+                    }
+
+                    if (!tabDelimitedFile) {
+                        console.error("No tab-delimited text file found.");
+                        return;
+                    }
+
+                    // Read the tab-delimited text file content
+                    const fileContent = await zip.file(tabDelimitedFile).async("string");
+
+                    // Parse the tab-delimited text file using d3
+                    const nationalSldlsts = d3.dsvFormat('\t').parse(fileContent, function (d) {
+                        return {
+                            c_state_name: "Alaska", // Add Alaska name to state_name column
+                            geoid: d['GEOID'],
+                            c_sldlst_name: d['NAME']
+                        };
+                    });
+                    // Convert the national sldlsts data to a DataFrame
+                    const nationalSldlsts_df = new dfd.DataFrame(nationalSldlsts, {
+                        index: null,
+                        columns: ["c_state_name", "geoid", "c_sldlst_name"],
+                        dtypes: ["string", "string", "string"]
+                    });
+
+                    // filter the national sldlsts dataframe for Alaska and reset the index
+                    let akGeographies = nationalSldlsts_df.loc({
+                        rows: nationalSldlsts_df["geoid"].map(
+                            (geo) => geo.startsWith("02")
+                        ),
+                    }).resetIndex({ drop: true });
+
+                    // Reorder columns
+                    akGeographies = akGeographies.loc({
+                        columns: ["c_state_name", "geoid", "c_sldlst_name"]
+                    });
+                    // Log the shape and data types of the resulting DataFrame
+                    console.log("Shape:", akGeographies.shape);
+                    console.log("Data Types:", akGeographies.ctypes);
+
+                    // Print the first 100 rows of the resulting DataFrame
+                    akGeographies.head(100).print();
+
+                    this.states.push({
+                        id: "02",
+                        name: "Alaska"
+                    });
+
+                    // convert back to JSON and return
+                    return dfd.toJSON(akGeographies);
+                },
+                async getFoxStateResults(stateAbbr) {
+                    // Request JSON data for the specified state
+                    const url = `https://feeds-elections.foxnews.com/archive/politics/elections/2024/3/2024_Generals/President/${stateAbbr}/county_level_results/file.json`;
+                    const response = await fetch(url);
+                    const data = await response.json();
+
+                    // Process lookup table
+                    const lookupCounties = data.lookup.counties;
+                    const lookupArray = Object.entries(lookupCounties).map(
+                        ([key, value]) => ({
+                            countyId: key.toString(),
+                            county_fips: value.fipsCode.toString().padStart(5, "0"),
+                        })
+                    );
+
+                    // Process results table
+                    const results = data.results;
+                    const rows = [];
+                    results.forEach((result) => {
+                        const partyName = result.candidate.partyName;
+                        result.countyVotes.forEach((voteData) => {
+                            rows.push({
+                                partyName,
+                                countyId: voteData.countyId.toString(),
+                                count: voteData.votes.count,
+                            });
+                        });
+                    });
+
+                    const candidateColumns = ["partyName", "countyId", "count"];
+                    const candidateDtypes = ["string", "string", "int32"];
+                    // Convert rows to a DataFrame (using danfo.js)
+                    const candidateDf = new dfd.DataFrame(rows, {
+                        index: null,
+                        columns: candidateColumns,
+                        dtypes: candidateDtypes,
+                    });
+                    // Group by county and calculate total votes
+                    const groupedByCounty = candidateDf
+                        .groupby(["countyId"])
+                        .col(["count"])
+                        .sum();
+                    groupedByCounty.rename(
+                        { count_sum: "total_votes" },
+                        { inplace: true }
+                    );
+                    // Force 'countyId' to string
+                    const newGroupedByCounty = new dfd.DataFrame(
+                        {
+                            countyId: groupedByCounty["countyId"].$data.map(String), // Convert to string explicitly
+                            total_votes: groupedByCounty["total_votes"].$data, // Preserve total_votes column
+                        },
+                        {
+                            index: null,
+                            columns: ["countyId", "total_votes"],
+                            dtypes: ["string", "int32"],
+                        }
+                    );
+
+                    // Filter results for Democrat and Republican candidates only
+                    const filteredDf = candidateDf.loc({
+                        rows: candidateDf["partyName"].map(
+                            (party) => party === "Democrat" || party === "Republican"
+                        ),
+                    });
+                    // Pivot the DataFrame
+                    // Group by 'countyId' and 'partyName' to aggregate vote counts
+                    const groupedDf = filteredDf
+                        .groupby(["countyId", "partyName"])
+                        .agg({ count: "sum" });
+
+                    // Convert the grouped DataFrame into an object for reshaping
+                    const groupedData = groupedDf.values.map((row) => ({
+                        countyId: row[0],
+                        partyName: row[1],
+                        count: row[2],
+                    }));
+
+                    // Reshape the data into pivot-like format
+                    const pivotMap = {};
+                    groupedData.forEach((row) => {
+                        const { countyId, partyName, count } = row;
+                        if (!pivotMap[countyId]) {
+                            pivotMap[countyId] = { countyId, votes_dem: 0, votes_gop: 0 };
+                        }
+                        if (partyName === "Democrat") {
+                            pivotMap[countyId].votes_dem = count;
+                        } else if (partyName === "Republican") {
+                            pivotMap[countyId].votes_gop = count;
+                        }
+                    });
+
+                    const pivotColumns = ["countyId", "votes_dem", "votes_gop"];
+                    const pivotDtypes = ["string", "int32", "int32"];
+                    // Convert pivoted object back into a DataFrame
+                    const pivotedData = Object.values(pivotMap);
+                    const pivotedDf = new dfd.DataFrame(pivotedData, {
+                        index: null,
+                        columns: pivotColumns,
+                        dtypes: pivotDtypes,
+                    });
+
+                    // Fill NaN values with 0
+                    pivotedDf.fillNa(0);
+                    pivotedDf.rename(
+                        { Democrat: "votes_dem", Republican: "votes_gop" },
+                        { inplace: true }
+                    );
+
+                    // Merge total votes and pivoted results
+                    const resultsDf = dfd.merge({
+                        left: pivotedDf,
+                        right: newGroupedByCounty,
+                        on: ["countyId"],
+                        how: "left",
+                    });
+
+                    const lookupColumns = ["countyId", "county_fips"];
+                    const lookupDtypes = ["string", "string"];
+                    // Convert lookupArray to a DataFrame
+                    const lookupDf = new dfd.DataFrame(lookupArray, {
+                        index: null,
+                        columns: lookupColumns,
+                        dtypes: lookupDtypes,
+                    });
+
+                    // Merge with lookup to get FIPS codes
+                    const resultsLookupDf = dfd.merge({
+                        left: resultsDf,
+                        right: lookupDf,
+                        on: ["countyId"],
+                        how: "left",
+                    });
+
+                    // Reorder columns
+                    const reorderedDf = resultsLookupDf.loc({
+                        columns: ["county_fips", "total_votes", "votes_dem", "votes_gop"],
+                    });
+
+                    // convert to JSON and return final results
+                    return dfd.toJSON(reorderedDf);
+                },
+                async fetchElectionResults(censusStates, censusGeographies) {
+                    try {
+                        // Define state abbreviations while leaving off Alaska
+                        const stateAbbrs = censusStates
+                            .filter((state) => state.state_abbr !== "AK")
+                            .map((state) => state.state_abbr);
+
+                        // Retrieve results for each state asynchronously
+                        const contiguousFoxStateResults = await Promise.all(
+                            stateAbbrs.map(
+                                async (stateAbbr) => await this.getFoxStateResults(stateAbbr)
+                            )
+                        );
+
+                        // combine all state data
+                        let contiguousFoxElectionResults =
+                            contiguousFoxStateResults.flat(); // Flatten the array of state results
+
+                        const countyResults = {};
+
+                        // add geographic data and calculated metrics
+                        contiguousFoxElectionResults = contiguousFoxElectionResults.map(
+                            d => {
+                                const county_fips = String(d.county_fips); // Convert to string
+                                const county_attributes = censusGeographies.filter(
+                                    (geography) => geography.geoid === county_fips
+                                )[0];
+                                const result = {
+                                    county_fips: county_fips,
+                                    // add census geographies
+                                    State: county_attributes.c_state_name,
+                                    County: county_attributes.c_county_name,
+                                    // add calculated columns
+                                    ["% of Total Vote, GOP"]: d.votes_gop / d.total_votes,
+                                    ["% of Total Vote, Dem."]: d.votes_dem / d.total_votes,
+                                    ["Percentage Point Difference"]:
+                                        ((d.votes_gop - d.votes_dem) / d.total_votes) * -1,
+                                    ["Winner"]: d.votes_dem > d.votes_gop ? "Dem." : "GOP",
+                                    ["GOP"]: d.votes_gop,
+                                    ["Dem."]: d.votes_dem,
+                                    ["Total Votes"]: d.total_votes,
+                                    ["Margin"]: d.votes_gop - d.votes_dem,
+                                    ["Abs. Margin"]: Math.abs(d.votes_gop - d.votes_dem),
+                                    Size: Math.sqrt(Math.abs(d.votes_gop - d.votes_dem)) * 0.02,
+                                };
+                                countyResults[county_fips] = result;
+                                return result;
+                            }
+                        );
+
+                        // add county fips to array and add results to districtObj
+                        this.counties = this.counties.concat(
+                            Object.keys(countyResults)
+                        );
+                        this.districtObj = { ...this.districtObj, ...countyResults };
+                    } catch (error) {
+                        console.error("Error fetching Alaska results:", error);
+                    }
+                },
+                async fetchDCResults(dcGeographies) {
+
+                    async function getWardElectionResults(wardNumber) {
+                        // Fetch the JSON data from the API
+                        const url = `https://us-election-server-2ae36243a2a4.herokuapp.com/dc/results/${wardNumber}`;
+                        const response = await fetch(url);
+                        const data = await response.json();
+
+                        // Filter rows where OfficeName is "ELECTORS OF PRESIDENT AND VICE PRESIDENT OF THE UNITED STATES"
+                        const dcPresidentResults = data.filter(record => record.OfficeName === "ELECTORS OF PRESIDENT AND VICE PRESIDENT OF THE UNITED STATES");
+
+                        // Flatten the JSON to extract required information
+                        const rows = dcPresidentResults[0].ElectionData.map(candidate => ({
+                            WardNumber: wardNumber,
+                            PartyCode: candidate.PartyCode,
+                            votes: candidate.Votes,
+                            total_votes: candidate.TotalVotes
+                        }));
+
+                        // Filter for DEM and REP candidates
+                        const filteredCandidates = rows.filter(row => ["DEM", "REP"].includes(row.PartyCode));
+
+                        // Pivot the data to separate GOP and DEM votes into their own columns
+                        const pivotData = {};
+                        filteredCandidates.forEach(row => {
+                            if (!pivotData[row.WardNumber]) {
+                                pivotData[row.WardNumber] = { Ward: `Ward ${row.WardNumber}`, total_votes: row.total_votes, votes_gop: 0, votes_dem: 0 };
+                            }
+                            if (row.PartyCode === "REP") {
+                                pivotData[row.WardNumber].votes_gop = row.votes;
+                            } else if (row.PartyCode === "DEM") {
+                                pivotData[row.WardNumber].votes_dem = row.votes;
+                            }
+                        });
+
+                        const dcWardResults = Object.values(pivotData);
+
+                        return dcWardResults;
+                    }
+
+                    // Extract the ward numbers from the c_sldust_name column
+                    const wards = dcGeographies.map(geo => geo.c_sldust_name.match(/Ward (\d+)/)[1]);
+
+                    // Retrieve results for each ward
+                    const dcResultsPromises = wards.map(wardNumber => getWardElectionResults(wardNumber));
+                    const dcResults = await Promise.all(dcResultsPromises);
+
+                    // Combine all ward dataframes
+                    const dcResultsFlat = dcResults.flat();
+
+                    const countyResults = {};
+
+                    // Merge with legislative districts
+                    const dcResultsGeographies = dcResultsFlat.map(row => {
+                        const county_attributes = dcGeographies.find(geo => geo.c_sldust_name === row.Ward);
+                        const county_fips = String(county_attributes.geoid); // Convert to string
+                        const result = {
+                            // add census geographies
+                            State: county_attributes
+                                ? county_attributes.c_state_name
+                                : null,
+                            County: county_attributes
+                                ? county_attributes.c_sldust_name
+                                : null,
+                            // add calculated columns
+                            ["% of Total Vote, GOP"]: row.votes_gop / row.total_votes,
+                            ["% of Total Vote, Dem."]: row.votes_dem / row.total_votes,
+                            ["Percentage Point Difference"]:
+                                ((row.votes_gop - row.votes_dem) / row.total_votes) * -1,
+                            ["Winner"]: row.votes_dem > row.votes_gop ? "Dem." : "GOP",
+                            ["GOP"]: row.votes_gop,
+                            ["Dem."]: row.votes_dem,
+                            ["Total Votes"]: row.total_votes,
+                            ["Margin"]: row.votes_gop - row.votes_dem,
+                            ["Abs. Margin"]: Math.abs(row.votes_gop - row.votes_dem),
+                            Size:
+                                Math.sqrt(Math.abs(row.votes_gop - row.votes_dem)) * 0.02,
+                        };
+                        countyResults[county_fips] = result;
+                        return result;
+                    });
+
+                    // add county fips to array and add results to districtObj
+                    this.counties = this.counties.concat(
+                        Object.keys(countyResults)
+                    );
+                    this.districtObj = { ...this.districtObj, ...countyResults };
+                },
+                async fetchDCUpdatedDate() {
+                    // Fetch the JSON data from the API
+                    const url = `https://us-election-server-2ae36243a2a4.herokuapp.com/dc/results/lastUpdated`;
+                    const response = await fetch(url);
+                    const data = await response.json();
+
+                    this.dc.lastupdated = new Date(data.LastUpdated).toLocaleString();
+                },
+                async fetchAlaskaResults(akGeographies) {
+                    try {
+                        // Fetch the JSON data
+                        const url = "https://us-election-server-2ae36243a2a4.herokuapp.com/ak/results/statewide";
+                        const response = await fetch(url, { method: "GET" });
+                        const data = await response.json();
+
+                        this.alaska.lastupdated = new Date(data.updated).toLocaleString();
+
+                        // Process candidate names
+                        let candidateNames = data.candidateNames
+                            .map((candidate, index) => ({
+                                candidateNumber: index.toString(),
+                                Candidate: candidate,
+                            }))
+                            .filter((candidate) =>
+                                ["Harris/Walz (DEM)", "Trump/Vance (REP)"].includes(
+                                    candidate.Candidate
+                                )
+                            );
+
+                        // Process contest names
+                        let contestNames = data.contestNames
+                            .map((contest, index) => ({
+                                contestNumber: index.toString(),
+                                Contest: contest,
+                            }))
+                            .filter(
+                                (contest) =>
+                                    contest.Contest === "U.S. President / Vice President"
+                            );
+
+                        // Process districts
+                        // Flatten the JSON to extract required information
+                        let districts = [];
+                        data.districts.forEach((district) => {
+                            let houseDistrict = district.number;
+                            district.contests.forEach((contest) => {
+                                let contestNumber = contest.n.toString();
+                                contest.c.forEach((candidate) => {
+                                    let candidateNumber = candidate.n.toString();
+                                    let votes = candidate.t;
+                                    districts.push({
+                                        "House District": `State House District ${houseDistrict}`,
+                                        contestNumber: contestNumber,
+                                        candidateNumber: candidateNumber,
+                                        votes: votes,
+                                    });
+                                });
+                            });
+                        });
+
+                        // Merge contests and candidates with districts
+                        let districtsContestsCandidates = [];
+                        districts.forEach((row) => {
+                            let contest = contestNames.find(
+                                (contest) => contest.contestNumber === row.contestNumber
+                            );
+                            let candidate = candidateNames.find(
+                                (candidate) =>
+                                    candidate.candidateNumber === row.candidateNumber
+                            );
+                            if (contest && candidate) {
+                                districtsContestsCandidates.push({
+                                    ["House District"]: row["House District"],
+                                    Contest: contest.Contest,
+                                    Candidate: candidate.Candidate,
+                                    votes: row.votes,
+                                });
+                            }
+                        });
+
+                        // Group by House District and calculate total votes
+                        let totalVotes = districtsContestsCandidates.reduce(
+                            (acc, row) => {
+                                acc[row["House District"]] =
+                                    (acc[row["House District"]] || 0) + row.votes;
+                                return acc;
+                            },
+                            {}
+                        );
+
+                        // Pivot table for party votes
+                        let pivot = districtsContestsCandidates.reduce((acc, row) => {
+                            if (!acc[row["House District"]]) {
+                                acc[row["House District"]] = {
+                                    "House District": row["House District"],
+                                    votes_gop: 0,
+                                    votes_dem: 0,
+                                };
+                            }
+                            if (row.Candidate === "Trump/Vance (REP)") {
+                                acc[row["House District"]].votes_gop += row.votes;
+                            } else if (row.Candidate === "Harris/Walz (DEM)") {
+                                acc[row["House District"]].votes_dem += row.votes;
+                            }
+                            return acc;
+                        }, {});
+
+                        // Convert pivot object to array
+                        let pivotArray = Object.values(pivot);
+
+                        // Merge total votes with pivot table
+                        pivotArray.forEach((row) => {
+                            row.total_votes = totalVotes[row["House District"]];
+                        });
+
+                        const countyResults = {};
+
+                        // Merge with legislative districts (assuming ak_geographies is available)
+                        let akResultsGeographies = pivotArray.map((row) => {
+                            const county_attributes = akGeographies.find(
+                                (geo) => geo.c_sldlst_name === row["House District"]
+                            );
+                            const county_fips = String(county_attributes.geoid); // Convert to string
+                            const result = {
+                                county_fips: county_fips ? county_fips : null,
+                                // add census geographies
+                                State: county_attributes
+                                    ? county_attributes.c_state_name
+                                    : null,
+                                County: county_attributes
+                                    ? county_attributes.c_sldlst_name
+                                    : null,
+                                // add calculated columns
+                                ["% of Total Vote, GOP"]: row.votes_gop / row.total_votes,
+                                ["% of Total Vote, Dem."]: row.votes_dem / row.total_votes,
+                                ["Percentage Point Difference"]:
+                                    ((row.votes_gop - row.votes_dem) / row.total_votes) * -1,
+                                ["Winner"]: row.votes_dem > row.votes_gop ? "Dem." : "GOP",
+                                ["GOP"]: row.votes_gop,
+                                ["Dem."]: row.votes_dem,
+                                ["Total Votes"]: row.total_votes,
+                                ["Margin"]: row.votes_gop - row.votes_dem,
+                                ["Abs. Margin"]: Math.abs(row.votes_gop - row.votes_dem),
+                                Size:
+                                    Math.sqrt(Math.abs(row.votes_gop - row.votes_dem)) * 0.02,
+                            };
+                            countyResults[county_fips] = result;
+                            return result;
+                        });
+
+                        // add county fips to array and add results to districtObj
+                        this.counties = this.counties.concat(
+                            Object.keys(countyResults)
+                        );
+                        this.districtObj = { ...this.districtObj, ...countyResults };
+                    } catch (error) {
+                        console.error("Error fetching Alaska results:", error);
+                    }
+                },
+                async fetchUSGeography() {
+                    // get county paths and election data
+                    const results = await d3.json(
+                        "./cartography/2024/us-albers-500k.topojson"
+                    );
+
+                    // this.us = results;
+                    this.allNationFeatures = topojson.feature(results, results.objects.nation).features;
+                    this.allStateFeatures = topojson.feature(results, results.objects.state).features;
+                    this.allCountyFeatures = topojson.feature(results, results.objects.wards_districts_counties).features;
+                },
+                // Function to initialize the map
+                initializeMap() {
+                    const that = this;
+                    const width = this.map.width;
+                    const height = this.map.height;
+
+                    // Create the SVG element
+                    const svg = d3
+                        .select("#map")
+                        .attr("viewBox", [0, 0, width, height]) // Use dynamically calculated width and height
+                        .attr("width", width) // Set the width of the SVG
+                        .attr("height", height); // Set the height of the SVG
+
+                    const g = svg.append("g");
+
+                    // Create background box for zoom
+                    g.append("rect")
+                        .attr("class", "background")
+                        .attr("width", width)
+                        .attr("height", height);
+
+                    // Create group for county paths
+                    const group = g.append("g")
+                        .attr("id", "counties");
+
+                    // // Add county paths
+                    // const countyPaths = group
+                    //     .selectAll(".county")
+                    //     .data(topojson.feature(this.us, this.us.objects.wards_districts_counties).features)
+                    //     .enter()
+                    //     .append("path")
+                    //     .attr("id", d => `county-path-${d.id}`)
+                    //     .attr("class", "county")
+                    //     .style("cursor", d => {
+                    //         return d.id.startsWith(this.activeStateId) ? "pointer" : "default";
+                    //     })
+                    //     .on("click", (event, d) => {
+                    //         // determine whether there is a filter for a state
+                    //         const isStateFiltered = !!this.activeStateId;
+                    //         if (!isStateFiltered || d.id.startsWith(this.activeStateId)) {
+                    //             that.clicked(event, d, that);
+                    //         }
+                    //     });
+
+                    // countyPaths
+                    //     .transition()
+                    //     .duration(this.transition.duration)
+                    //     .attr("d", this.path)
+                    //     .style("opacity", 1);
+
+                    // Add state boundaries
+                    group
+                        .selectAll(".state")
+                        // .datum(topojson.mesh(this.us, this.us.objects.state, (a, b) => a !== b))
+                        .data(this.allStateFeatures)
+                        .enter()
+                        .append("path")
+                        .attr("class", "state")
+                        .attr("d", this.path);
+
+                    // Add national boundary
+                    const nation = group
+                        .append("path")
+                        .datum(this.allNationFeatures[0])
+                        .attr("class", "nation")
+                        .attr("d", this.path);
+
+                    // Initialize the map position with the calculated center
+                    group.attr("transform", `translate(${this.center[0]},${this.center[1]})`);
+
+                    // const countyDots = group
+                    //     .selectAll(".dot")
+                    //     .data(topojson.feature(this.us, this.us.objects.wards_districts_counties).features)
+                    //     .enter()
+                    //     .append("circle")
+                    //     .attr("id", d => `county-circle-${d.id}`)
+                    //     .attr("class", "dot")
+                    //     .attr("cx", d => {
+                    //         const centroid = this.path.centroid(d);
+                    //         return !centroid[0] ? null : centroid[0];
+                    //     })
+                    //     .attr("cy", d => {
+                    //         const centroid = this.path.centroid(d);
+                    //         return !centroid[1] ? null : centroid[1];
+                    //     })
+                    //     .attr("r", 0)
+                    //     .style("opacity", 0)
+                    //     .style("cursor", d => {
+                    //         return d.id.startsWith(this.activeStateId) ? "pointer" : "default";
+                    //     })
+                    //     .on("click", (event, d) => {
+                    //         // determine whether there is a filter for a state
+                    //         const isStateFiltered = !!this.activeStateId;
+                    //         if (!isStateFiltered || d.id.startsWith(this.activeStateId)) {
+                    //             that.clicked(event, d, that);
+                    //         }
+                    //     });
+
+                    // create a state name title at the top-left corner
+                    const stateTitle = g
+                        .append("text")
+                        .attr("id", "state-title")
+                        .attr("x", 10)
+                        .attr("y", 50) // padding from the top
+                        .text("United States");
+
+                    svg.call(this.zoom);
+
+                    // // create details bar
+                    // // use John Alexis details Gómez dynamic details bar
+                    // // https://johndetails.co/
+
+                    // const tableSVG = d3.select("#detailBar")
+                    //     .append("svg")
+                    //     .attr("width", this.countyTableWidth)
+                    //     .attr("height", 70);
+
+                    // const detailsLayer = tableSVG
+                    //     .append("g")
+                    //     .attr("id", "details")
+                    //     // .attr("transform", "translate(" + (this.countyTableWidth / 2 - 100) + ", 30)");
+                    //     .attr("transform", `translate(${this.countyTableWidth / 3 + 35}, 25)`);
+
+                    // detailsLayer
+                    //     .append("rect")
+                    //     .attr("class", "background")
+                    //     // .attr(
+                    //     //     "transform",
+                    //     //     "translate(" + (-this.wScale.range()[1] + 100) + ", -20)"
+                    //     // )
+                    //     .attr(
+                    //         "transform",
+                    //         `translate(${-(this.countyTableWidth + 30) / 2}, 20)`
+                    //     )
+                    //     // .attr("width", this.wScale.range()[1] * 2 + 70)
+                    //     .attr("width", this.countyTableWidth - 30)
+                    //     .attr("rx", 5)
+                    //     .attr("ry", 5)
+                    //     .attr("height", 60);
+
+                    // detailsLayer
+                    //     .append("text")
+                    //     .attr("id", "county-legend")
+                    //     .attr("class", "text-center")
+                    //     .html("Percentage Share of the Two-party Vote")
+                    //     .attr("transform", "translate(95, 0)");
+
+                },
+                // Function to handle the type of map chosen
+                renderLayer() {
+                    // first remove path fills and circles
+                    this.removePaths();
+                    this.removeCircles();
+                    // then create and update either paths or circles
+                    if (this.selectedMap === "dotDensity") {
+                        this.createCircles();
+                    } else if (this.selectedMap === "choropleth") {
+                        this.createPaths();
+                    }
+                },
+                // Function to handle filtering and zooming to the state level
+                toggleStateFilter(state, e) {
+                    let stateName; // Set the state name variable
+                    let stateId; // Set the state id variable
+
+                    // Check if the clicked state is already active
+                    if (!(this.activeStateId == state.id)) {
+                        stateId = state.id; // Set the active state id
+                        stateName = state.name; // Set the active state name
+                    } else {
+                        stateId = null; // Reset the active state
+                        stateName = "United States"; // Reset the state name
+                    }
+                    this.setLayers(stateId, stateName, e); // Reset the map to its original state
+
+                },
+                // Function to handle resetting the map to its original state
+                setLayers(stateId, stateName, e) {
+                    // the active state
+                    this.activeStateId = stateId; // Set the active state
+
+                    // Update the state title
+                    this.updateStateTitle(stateName);
+
+                    // Render the selected map layer
+                    this.renderLayer();
+
+                    // update individual county bars
+                    this.updateCountyBars();
+
+                    // update the details bar
+                    this.updateBars();
+
+                    if (!this.activeStateId) {
+                        // Reset the zoom level and center the map
+                        this.resetZoom();
+
+                    } else {
+                        // Zoom to the selected state
+                        const stateBoundaries = d3.selectAll(".state").data().filter(d => d.id === stateId);
+
+                        if (stateBoundaries.length > 0) {
+                            this.clicked(e, stateBoundaries[0], this);
+                        }
+
+                    }
+
+                },
+                createPaths() {
+                    // define Vue 'this' for use in nested functions
+                    const that = this;
+
+                    // determine whether there is a filter for a state
+                    const isStateFiltered = !!this.activeStateId;
+
+                    // Select group for county paths
+                    const countyPaths = d3.select("#counties")
+                        .selectAll(".county")
+                        .data(this.filteredFeatures);
+
+                    // Add county paths
+                    const enterCountyPaths = countyPaths
+                        .enter()
+                        .append("path")
+                        .attr("id", d => `county-path-${d.id}`)
+                        .attr("class", "county")
+                        .style("opacity", 0)
+                        .style("cursor", "pointer");
+
+                    enterCountyPaths
+                        .on("click", (event, d) => that.clicked(event, d, that));
+
+                    // update fill property of county paths
+                    enterCountyPaths
+                        .transition()
+                        .duration(this.transition.duration)
+                        .attr("d", this.path)
+                        .style("opacity", 1)
+                        .style("fill", d => {
+                            const county = that.districtObj[d.id];
+                            return county ? that.color(county["Percentage Point Difference"]) : "#ccc";
+                        });
+
+
+                    countyPaths.exit().remove();
+
+                },
+                removePaths() {
+                    // Select all elements with the "county" class
+                    const countyPaths = d3.selectAll(".county");
+
+                    // Transition to diminish opacity, fill, and stroke-width properties, then remove elements from the DOM
+                    countyPaths
+                        // .transition()
+                        // .duration(this.transition.duration) // Use a transition for smooth effect
+                        .style("opacity", 0)
+                        .style("fill", "#ffffff")
+                        .style("stroke-width", 0)
+                        .remove(); // Remove elements from the DOM after the transition ends
+                    // .on("end", function () {
+                    //     d3.select(this).remove(); // Remove elements from the DOM after the transition ends
+                    // });
+                },
+                createCircles() {
+                    // define Vue 'this' for use in nested functions
+                    const that = this;
+
+                    // determine whether there is a filter for a state
+                    const isStateFiltered = !!this.activeStateId;
+
+                    // Select group for county dots
+                    const countyDots = d3.select("#counties")
+                        .selectAll(".dot")
+                        .data(this.filteredFeatures);
+
+                    // Add county circles
+                    const enterCountyDots = countyDots
+                        .enter()
+                        .append("circle")
+                        .attr("id", d => `county-circle-${d.id}`)
+                        .attr("class", "dot")
+                        .attr("cx", d => {
+                            const centroid = this.path.centroid(d);
+                            return !centroid[0] ? null : centroid[0];
+                        })
+                        .attr("cy", d => {
+                            const centroid = this.path.centroid(d);
+                            return !centroid[1] ? null : centroid[1];
+                        })
+                        .attr("r", 0)
+                        .style("opacity", 0)
+                        .style("cursor", "pointer");
+
+                    enterCountyDots
+                        .on("click", (event, d) => that.clicked(event, d, that));
+
+                    // update radius, fill, and opacity properties of county circles
+                    enterCountyDots
+                        .transition()
+                        .duration(this.transition.duration)
+                        .attr("r", d => {
+                            const county = that.districtObj[d.id];
+                            return county ? isStateFiltered ? county.Size * 0.5 : county.Size : 0;
+                        })
+                        .style("stroke-width", d => {
+                            return isStateFiltered ? (d.id.startsWith(that.activeStateId) ? 2 : 0) : 3;
+                        })
+                        .style("fill", d => {
+                            const county = that.districtObj[d.id];
+                            return county ? that.color(county["Percentage Point Difference"]) : "#ccc";
+                        })
+                        .style("opacity", 1);
+
+                    countyDots.exit().remove();
+
+                },
+                removeCircles() {
+                    // Select all elements with the "dot" class
+                    const countyDots = d3.selectAll(".dot")
+
+                    // Transition to diminish opacity, fill, and stroke-width properties, then remove elements from the DOM
+                    countyDots
+                        // .transition()
+                        // .duration(this.transition.duration)
+                        .attr("r", 0)
+                        .style("opacity", 0)
+                        .style("stroke-width", 0)
+                        .remove(); // Remove elements from the DOM after the transition ends
+                    // .on("end", function () {
+                    //     d3.select(this).remove(); // Remove elements from the DOM after the transition ends
+                    // });
+
+                },
+                updateCountyBars() {
+
+                    const sortedCounties = this.activeStateId ? this.sortedCounties : [];
+
+                    const that = this;
+
+                    const tbody = d3.select('#county-table tbody')
+
+                    // Bind data with a key function to uniquely identify rows
+                    const rows = tbody.selectAll('tr')
+                        .data(sortedCounties, county => county); // Use county as the unique key
+
+                    // handle the 'enter' selection: add new rows for new data
+                    const enterRows = rows.enter()
+                        .append('tr')
+                        .attr('class', 'county-cell cursor-pointer hover:bg-blue-100');
+
+                    // Add hover event to highlight the corresponding county path
+                    enterRows.on('mouseover', (event, county) => {
+                        // Add highlighting to the county path or circle on the map
+                        if (that.selectedMap === "choropleth") {
+                            d3.select(`#county-path-${county}`)
+                                .classed('highlighted-path', true);
+                        } else {
+                            d3.select(`#county-circle-${county}`)
+                                .classed('highlighted-circle', true);
+                        }
+                        that.updateBars({ id: county });
+                    }).on('mouseout', function (event, county) {
+                        // Remove highlighting from the county path or circle on the map
+                        if (that.selectedMap === "choropleth") {
+                            d3.select(`#county-path-${county}`)
+                                .classed('highlighted-path', false);
+                        } else {
+                            d3.select(`#county-circle-${county}`)
+                                .classed('highlighted-circle', false);
+                        }
+                        that.updateBars(null);
+                    });
+
+                    // Add County column
+                    enterRows.append('td')
+                        .attr('class', 'px-4 py-2 border border-gray-300')
+                        .text(county => this.districtObj[county].County);
+
+                    // Add Votes column
+                    enterRows.append('td')
+                        .attr('class', 'px-4 py-2 text-right border border-gray-300')
+                        .text(county => that.formatValue(this.districtObj[county]['Total Votes'], "integer"))
+                        .transition()
+                        .duration(that.transition.duration)
+                        .ease(that.transition.ease) // Ease function applied here
+                        .tween('text', function (county) {
+                            const theOther = this;
+                            const startValue = 0; // Starting value for tween
+                            const endValue = that.districtObj[county]['Total Votes']; // Target value
+                            const interpolator = d3.interpolate(startValue, endValue); // Interpolator function
+
+                            return function (t) {
+                                // Update text value during the transition
+                                d3.select(theOther).text(that.formatValue(interpolator(t), "integer"));
+                            };
+                        });
+
+                    // Add Percentage column with bar chart
+                    const percentageCells = enterRows.append('td')
+                        .attr('class', 'px-4 py-2 border border-gray-300');
+
+                    percentageCells.append('div')
+                        .attr('class', 'county-container flex items-center gap-3 text-xs')
+                        .each(function (county) {
+                            const container = d3.select(this);
+
+                            const gopShare = container.data().map(county => that.districtObj[county]['% of Total Vote, GOP'])[0];
+                            const demShare = container.data().map(county => that.districtObj[county]['% of Total Vote, Dem.'])[0];
+
+                            // define the data for the GOP span element
+                            const gopSpan = container.selectAll('.gop-share')
+                                .data([gopShare]);
+
+                            // Add GOP percentage span
+                            gopSpan.enter()
+                                .append('span')
+                                .text('Rep. ')
+                                .append('span')
+                                .attr('class', 'gop-share text-left w-16')
+                                .transition()
+                                .duration(that.transition.duration)
+                                .ease(that.transition.ease) // Ease function applied here
+                                .tween('text', function (d) {
+                                    const theOther = this;
+                                    const startValue = 0; // Starting value for tween
+                                    const endValue = gopShare; // Target value
+                                    const interpolator = d3.interpolate(startValue, endValue); // Interpolator function
+
+                                    return function (t) {
+                                        // Update text value during the transition
+                                        d3.select(theOther).text(that.formatValue(interpolator(t), "percent"));
+                                    };
+                                });
+
+                            // Add SVG bar chart
+                            const svg = container.append('svg')
+                                .attr('class', 'county-bar bar w-32 h-4')
+                                .attr('viewBox', '0 0 101 10')
+                                .attr('xmlns', 'http://www.w3.org/2000/svg');
+
+                            const countyDetailLayer = svg
+                                .append("g")
+                                .attr("class", "county-detail")
+                                .attr("transform", "translate(0, 0)");
+
+                            // GOP bar
+                            countyDetailLayer.append('rect')
+                                .attr('class', 'gop-bar')
+                                .attr('x', 50)
+                                .attr('y', 0)
+                                .attr('height', 10)
+                                .attr('width', 0)
+                                .transition()
+                                .duration(that.transition.duration)
+                                .ease(that.transition.ease) // Ease function applied here
+                                .attr('fill', that.color(-gopShare))
+                                .attr("x", 0)
+                                .attr('width', gopShare * 100);
+
+                            // Dem bar
+                            countyDetailLayer.append('rect')
+                                .attr('class', 'dem-bar')
+                                .attr('x', 50)
+                                .attr('y', 0)
+                                .attr('height', 10)
+                                .attr('width', 0)
+                                .transition()
+                                .duration(that.transition.duration)
+                                .ease(that.transition.ease) // Ease function applied here
+                                .attr('fill', that.color(demShare))
+                                .attr("x", gopShare * 100)
+                                .attr('width', (1 - gopShare) * 100);
+
+                            // define the data for the GOP span element
+                            const demSpan = container.selectAll('.dem-share')
+                                .data([demShare]);
+
+                            // Add Dem percentage span
+                            demSpan.enter()
+                                .append('span')
+                                .text('Dem. ')
+                                .append('span')
+                                .attr('class', 'dem-share text-right w-16')
+                                .transition()
+                                .duration(that.transition.duration)
+                                .ease(that.transition.ease) // Ease function applied here
+                                .tween('text', function (d) {
+                                    const theOther = this;
+                                    const startValue = 0; // Starting value for tween
+                                    const endValue = demShare; // Target value
+                                    const interpolator = d3.interpolate(startValue, endValue); // Interpolator function
+
+                                    return function (t) {
+                                        // Update text value during the transition
+                                        d3.select(theOther).text(that.formatValue(interpolator(t), "percent"));
+                                    };
+                                });
+                        });
+
+                    // handle the 'update' selection: update existing rows
+                    const updateRows = rows;
+
+                    // update cells in existing rows
+                    updateRows.select('td:nth-child(1)')
+                        .text(county => this.districtObj[county].County);
+
+                    updateRows.select('td:nth-child(2)')
+                        .text(county => that.formatValue(this.districtObj[county]['Total Votes'], "integer"))
+                        .transition()
+                        .duration(that.transition.duration)
+                        .ease(that.transition.ease) // Ease function applied here
+                        .tween('text', function (county) {
+                            const theOther = this;
+                            const startValue = 0; // Starting value for tween
+                            const endValue = that.districtObj[county]['Total Votes']; // Target value
+                            const interpolator = d3.interpolate(startValue, endValue); // Interpolator function
+
+                            return function (t) {
+                                // Update text value during the transition
+                                d3.select(theOther).text(that.formatValue(interpolator(t), "integer"));
+                            };
+                        });
+
+                    updateRows.select('td:nth-child(3) .county-container')
+                        .each(function (county) {
+                            const container = d3.select(this);
+
+                            const gopShare = container.data().map(county => that.districtObj[county]['% of Total Vote, GOP'])[0];
+                            const demShare = container.data().map(county => that.districtObj[county]['% of Total Vote, Dem.'])[0];
+
+                            // Update GOP percentage span
+                            container
+                                .select('span.gop-share')
+                                .transition()
+                                .duration(that.transition.duration)
+                                .ease(that.transition.ease) // Ease function applied here
+                                .tween('text', function (d) {
+                                    const theOther = this;
+                                    const startValue = 0; // Starting value for tween
+                                    const endValue = gopShare; // Target value
+                                    const interpolator = d3.interpolate(startValue, endValue); // Interpolator function
+
+                                    return function (t) {
+                                        // Update text value during the transition
+                                        d3.select(theOther).text(that.formatValue(interpolator(t), "percent"));
+                                    };
+                                });
+
+                            // Update SVG bar chart
+                            const svg = container.select('svg');
+
+                            // GOP bar
+                            svg.select('rect.gop-bar')
+                                .transition()
+                                .duration(that.transition.duration)
+                                .ease(that.transition.ease) // Ease function applied here
+                                .attr('fill', that.color(-gopShare))
+                                .attr("x", 0)
+                                .attr('width', gopShare * 100);
+
+                            // Dem bar
+                            svg.select('rect.dem-bar')
+                                .transition()
+                                .duration(that.transition.duration)
+                                .ease(that.transition.ease) // Ease function applied here
+                                .attr('fill', that.color(demShare))
+                                .attr("x", gopShare * 100)
+                                .attr('width', (1 - gopShare) * 100);
+
+                            // Update Dem percentage span
+                            container
+                                .select('span.dem-share')
+                                .transition()
+                                .duration(that.transition.duration)
+                                .ease(that.transition.ease) // Ease function applied here
+                                .tween('text', function (d) {
+                                    const theOther = this;
+                                    const startValue = 0; // Starting value for tween
+                                    const endValue = demShare; // Target value
+                                    const interpolator = d3.interpolate(startValue, endValue); // Interpolator function
+
+                                    return function (t) {
+                                        // Update text value during the transition
+                                        d3.select(theOther).text(that.formatValue(interpolator(t), "percent"));
+                                    };
+                                });
+
+                            container.exit().remove();
+                        });
+
+                    // handle the 'exit' selection: remove rows for old data
+                    rows.exit().remove();
+
+                },
+                updateStateTitle(title) {
+                    d3.select("#state-title").text(title);
+                },
+                sortCountyTable(column) {
+                    if (this.sortOrderColumn === column) {
+                        this.sortOrderAscending = !this.sortOrderAscending;
+                    } else {
+                        this.sortOrderColumn = column;
+                        this.sortOrderAscending = true;
+                    }
+                    this.updateCountyBars();
+                },
+                createBars() {
+                    // create details bar
+                    // use John Alexis details Gómez dynamic details bar
+                    // https://johndetails.co/
+
+                    const tableSVG = d3.select("#detailBar")
+                        .append("svg")
+                        .attr("width", this.countyTableWidth)
+                        .attr("height", 70);
+
+                    const detailsLayer = tableSVG
+                        .append("g")
+                        .attr("id", "details")
+                        // .attr("transform", "translate(" + (this.countyTableWidth / 2 - 100) + ", 30)");
+                        .attr("transform", `translate(${this.countyTableWidth / 3 + 35}, 25)`);
+
+                    detailsLayer
+                        .append("text")
+                        .attr("id", "county-legend")
+                        .attr("class", "text-center")
+                        .html("Percentage Share of the Two-party Vote")
+                        .attr("transform", "translate(95, 0)");
+
+
+                    const share = [this.demShare, -this.gopShare];
+                    const detailsBars = detailsLayer
+                        .selectAll(".bar")
+                        .data(share)
+                        .enter()
+                        .append("g")
+                        .attr("class", "bar");
+
+                    detailsBars
+                        .append("rect")
+                        .attr("width", 0)
+                        .attr("height", 20)
+                        .attr("x", 100)
+                        .attr("y", 10)
+                        .style("fill", this.color)
+                        .transition()
+                        .duration(this.transition.duration)
+                        .attr("x", d => (d > 0 ? 100 : 100 - this.wScale(-d)))
+                        .attr("width", d => (d > 0 ? this.wScale(d) : this.wScale(-d)));
+
+                    detailsBars
+                        .append("text")
+                        .text(d =>
+                            d > 0
+                                ? `Dem. ${d3.format(".2%")(d)}`
+                                : `Rep. ${d3.format(".2%")(-d)}`
+                        )
+                        .attr("x", 100)
+                        .attr("dx", d => (d > 0 ? 5 : -5))
+                        .attr("dy", 24)
+                        .style("text-anchor", d => (d > 0 ? "start" : "end"))
+                        .transition()
+                        .duration(this.transition.duration)
+                        .attr("x", d =>
+                            d > 0 ? 100 + this.wScale(d) : 100 - this.wScale(-d)
+                        );
+                },
+                // adjust data bar on hover
+                updateBars(d) {
+                    const that = this;
+                    const detailsLayer = d3.select("#details");
+                    let share = [this.demShare, -this.gopShare];
+                    let label = "Percentage Share of the Two-party Vote";
+
+                    if (d) {
+                        const county = this.districtObj[d.id];
+                        if (county) {
+                            share = [
+                                county["% of Total Vote, Dem."],
+                                -county["% of Total Vote, GOP"],
+                            ];
+                            label = `<tspan x="0" y="0">Percentage Point Difference: ${this.formatValue(
+                                Math.abs(county["Percentage Point Difference"]),
+                                "percent"
+                            )}</tspan>`;
+                        }
+                    }
+
+                    const detailsBars = detailsLayer.selectAll(".bar").data(share);
+
+                    detailsBars
+                        .select("rect")
+                        .transition()
+                        .duration(this.transition.duration)
+                        .attr("x", function (d) {
+                            return d > 0 ? 100 : 100 - that.wScale(-d);
+                        })
+                        .attr("width", function (d) {
+                            return d > 0 ? that.wScale(d) : that.wScale(-d);
+                        })
+                        .style("fill", this.color);
+
+                    detailsBars
+                        .select("text")
+                        .text(this.showDiffLabel)
+                        .transition()
+                        .duration(this.transition.duration)
+                        .attr("x", function (d) {
+                            return d > 0 ? 100 + that.wScale(d) : 100 - that.wScale(-d);
+                        });
+
+                    detailsLayer.select("#county-legend").html(label);
+                },
+                // define mouseover and mouseout events to ensure mouseover events work on IE
+                bindHover() {
+                    const that = this;
+                    document.body.addEventListener("mousemove", function (e) {
+                        const createTooltipTable = (county) => {
+                            const value = that.formatValue(
+                                county["Percentage Point Difference"],
+                                "percent"
+                            );
+                            const dem_votes = that.formatValue(county["Dem."], "integer");
+                            const gop_votes = that.formatValue(county["GOP"], "integer");
+                            const votes_total = that.formatValue(
+                                county["Total Votes"],
+                                "integer"
+                            );
+                            const dem_pct = that.formatValue(
+                                county["% of Total Vote, Dem."],
+                                "percent"
+                            );
+                            const gop_pct = that.formatValue(
+                                county["% of Total Vote, GOP"],
+                                "percent"
+                            );
+
+                            const report_level =
+                                '<div class="e-title">' +
+                                county.County +
+                                ", " +
+                                county.State +
+                                "</div>";
+
+                            const startTable =
+                                '<table class="tooltip-table" style="width: 100%; border-collapse: collapse;">';
+                            const thead =
+                                '<thead><tr><th></th><th>Candidate</th><th>Party</th><th style="text-align:right">Votes</th><th style="text-align:right">Pct.</th></tr></thead>';
+                            const tbody = `<tbody><tr><td style="background-color:${that.color(
+                                0.75
+                            )}"></td><td>Kamala Harris</td><td>Dem.</td><td style="text-align:right">${dem_votes}</td><td style="text-align:right; font-weight:700">${dem_pct}</td></tr><tr><td style="background-color:${that.color(
+                                -0.75
+                            )}"></td><td>Donald J. Trump</td><td>Rep.</td><td style="text-align:right">${gop_votes}</td><td style="text-align:right; font-weight:700">${gop_pct}</td></tr><tr style="font-size:13px"><td></td><td><span><strong>All Votes</strong></span></td><td></td><td style="text-align:right"><span><strong>${votes_total}</strong></span></td><td style="text-align:right"></td></tr></tbody>`;
+                            const endTable = "</table>";
+
+                            // show tooltip with information from the __data__ property of the element
+                            const content =
+                                report_level + startTable + thead + tbody + endTable;
+
+                            return content;
+                        };
+
+                        let content = "";
+                        let d = null;
+                        let county = "";
+                        // determine whether there is a filter for a state
+                        const isStateFiltered = !!that.activeStateId;
+
+                        if
+                            ((e.target.nodeName == "path" || e.target.nodeName == "circle") && (e.target.className.animVal !== "state" || e.target.className.animVal === "dot")) {
+                            d = d3.select(e.target).data()[0];
+                            county = that.districtObj[d.id];
+                            content = d.id.startsWith(that.activeStateId) ? createTooltipTable(county) : null;
+                        }
+
+                        if (content) {
+                            that.showDetail(e, content);
+                            that.updateBars(d);
+                        }
+                    });
+
+                    document.body.addEventListener("mouseout", function (e) {
+                        if (
+                            e.target.nodeName == "path" ||
+                            e.target.nodeName == "circle"
+                        ) {
+                            that.hideDetail();
+                            that.updateBars(null);
+                        }
+                    });
+                },
+                // return percentage point labels for details bars
+                showDiffLabel(d) {
+                    return d > 0
+                        ? `Dem. ${this.formatValue(d, "percent")}`
+                        : `Rep. ${this.formatValue(-d, "percent")}`;
+                },
+                // Show tooltip on hover
+                showDetail(event, content) {
+                    // show tooltip with information from the __data__ property of the element
+                    let x_hover = 0;
+                    let y_hover = 0;
+
+                    const tooltip = d3.select(".tooltip");
+
+                    const tooltipWidth = parseInt(tooltip.style("width"));
+                    const tooltipHeight = parseInt(tooltip.style("height"));
+                    let classed, notClassed;
+
+                    if (event.pageX > document.body.clientWidth / 2) {
+                        x_hover = tooltipWidth + 30;
+                        classed = "right";
+                        notClassed = "left";
+                    } else {
+                        x_hover = -30;
+                        classed = "left";
+                        notClassed = "right";
+                    }
+
+                    y_hover =
+                        document.body.clientHeight - event.pageY < tooltipHeight + 4
+                            ? event.pageY - (tooltipHeight + 4)
+                            : event.pageY - tooltipHeight / 2;
+
+                    return tooltip
+                        .classed(classed, true)
+                        .classed(notClassed, false)
+                        .style("visibility", "visible")
+                        .style("top", y_hover + "px")
+                        .style("left", event.pageX - x_hover + "px")
+                        .html(content);
+                },
+                // Hide tooltip on hover
+                hideDetail() {
+                    const tooltip = d3.select(".tooltip");
+
+                    // hide tooltip
+                    return tooltip.style("visibility", "hidden");
+                },
+                clicked(event, d, that) {
+                    const [[x0, y0], [x1, y1]] = that.path.bounds(d); // Get bounding box of the selected feature
+                    event.stopPropagation();
+                    const svg = d3.select("#map");
+
+                    svg
+                        .transition()
+                        .duration(that.transition.duration * (3 / 4))
+                        .call(
+                            that.zoom.transform,
+                            d3.zoomIdentity
+                                .translate(that.map.width / 2, that.map.height / 2) // Center the map on the viewport
+                                .scale(
+                                    Math.min(
+                                        8,
+                                        0.9 / Math.max((x1 - x0) / that.map.width, (y1 - y0) / that.map.height)
+                                    )
+                                )
+                                .translate(-(x0 + x1) / 2, -(y0 + y1) / 2), // Center on the bounds of the clicked feature
+                            d3.pointer(event, svg.node())
+                        );
+
+                    this.isZoomed = true;
+                },
+                resetZoom() {
+                    const svg = d3.select("#map");
+
+                    svg
+                        .transition()
+                        .duration(this.transition.duration)
+                        .call(
+                            this.zoom.transform,
+                            d3.zoomIdentity.translate(this.center[0], this.center[1]).scale(1), // Center projection in the middle of the rect
+                            d3.zoomTransform(svg.node()).invert([this.center[0], this.center[1]])
+                        );
+
+                    this.isZoomed = false;
+                },
+                zoomed(event) {
+                    const duration = this.transition.duration;
+                    const { transform } = event;
+
+                    const counties = d3.select("#counties");
+                    counties.attr("transform", transform);
+                    counties.attr("stroke-width", 1 / transform.k);
+
+                    // // hide button if zoomed out
+                    // const fab = d3.select(".fab");
+                    // if (transform.k > 1 && (transform.x !== 0 || transform.y !== 0)) {
+                    //     fab
+                    //         .transition()
+                    //         .duration(duration / 3)
+                    //         .style("opacity", 1);
+                    // } else {
+                    //     fab
+                    //         .transition()
+                    //         .duration(duration / 3)
+                    //         .style("opacity", 0);
+                    // }
+                },
+                formatValue(value, type) {
+                    switch (type) {
+                        case "integer":
+                            return d3.format(",.0f")(value);
+                        case "float":
+                        case "percent":
+                            return d3.format(".2%")(value);
+                        default:
+                            return value;
+                    }
+                },
+                // Function to calculate the width of the div in pixels
+                setMapDimensions() {
+                    this.map.width = this.mapWidth;
+                    this.map.height = this.stateTableHeight;
+                }
+
+            },
+        });
+    </script>
+    <script>
+        (function (i, s, o, g, r, a, m) {
+            i["GoogleAnalyticsObject"] = r;
+            (i[r] =
+                i[r] ||
+                function () {
+                    (i[r].q = i[r].q || []).push(arguments);
+                }),
+                (i[r].l = 1 * new Date());
+            (a = s.createElement(o)), (m = s.getElementsByTagName(o)[0]);
+            a.async = 1;
+            a.src = g;
+            m.parentNode.insertBefore(a, m);
+        })(
+            window,
+            document,
+            "script",
+            "https://www.google-analytics.com/analytics.js",
+            "ga"
+        );
+
+        ga("create", "UA-102235118-1", "auto");
+        ga("send", "pageview");
+    </script>
+</body>
+
+</html>

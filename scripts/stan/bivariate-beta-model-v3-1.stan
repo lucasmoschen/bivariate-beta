@@ -6,39 +6,43 @@ functions {
    real log_multi_beta(vector theta){
        return sum(lgamma(theta)) - lgamma(sum(theta));
    }
-   real log_bivariate_beta_lpdf(data matrix xy, vector a, vector u, data int n, data vector w){
+   real log_bivariate_beta_lpdf(data matrix xy, vector alpha, vector u, data int n){
       vector[n] x = col(xy, 1);
       vector[n] y = col(xy, 2);
-      real v = dot_product(w, lmultiply(a[1]-1, u) + lmultiply(a[2]-1, x-u) + lmultiply(a[3]-1, y-u) + (a[4]-1) * log1m(x+y-u));
-      v += -n * log_multi_beta(a);
+      real v = sum(lmultiply(alpha[1]-1, fmax(u, 1e-12)) + lmultiply(alpha[2]-1, fmax(x-u, 1e-12)));
+      v += sum(lmultiply(alpha[3]-1, fmax(y-u, 1e-12)) + (alpha[4]-1) * log1m(fmin(1-1e-12, x+y-u)));
+      v += -n * log_multi_beta(alpha);
       return v;
    }
 }
 data {
    int<lower=0> n;
    matrix<lower=0, upper=1>[n,2] xy;
-   vector[n] w;
-   // gamma prior
+   // dirichlet prior
    vector<lower=0>[4] a;
-   vector<lower=0>[4] b;
+   real<lower=0> s_mu;
+   real<lower=0> s_sd;
 }
 transformed data {
    vector[n] lb;
    vector[n] ub;
    for (i in 1:n) {
-      lb[i] = max({0.0, xy[i,1]+xy[i,2]-1});
-      ub[i] = min(xy[i]);
+      lb[i] = fmax(0.0, xy[i,1]+xy[i,2]-1);
+      ub[i] = fmin(xy[i,1], xy[i,2]);
    }
 }
 parameters {
-   vector<lower=0>[4] alpha;
+   real<lower=0> s;
+   simplex[4] theta;
    vector<lower=0, upper=1>[n] u_raw;
 }
 transformed parameters {
+   vector[4] alpha = s * theta;
    vector[n] u = (ub - lb) .* u_raw + lb;
 }
 model {
-    alpha ~ gamma(a, b);
-    u_raw ~ uniform(0, 1);
-    xy ~ log_bivariate_beta(alpha, u, n, w);
+   s ~ lognormal(log(s_mu), s_sd); 
+   theta ~ dirichlet(a);
+   u_raw ~ uniform(0, 1);
+   xy ~ log_bivariate_beta(alpha, u, n);
 }

@@ -26,8 +26,8 @@ transformed data {
    vector[n] lb;
    vector[n] ub;
    for (i in 1:n) {
-      lb[i] = max({0.0, xy[i,1]+xy[i,2]-1});
-      ub[i] = min(xy[i]);
+      lb[i] = fmax(0.0, xy[i,1]+xy[i,2]-1);
+      ub[i] = fmin(xy[i,1], xy[i,2]);
    }
 }
 parameters {
