@@ -21,14 +21,29 @@ import json
 from __init__ import ROOT_DIR
 from cmdstanpy import CmdStanModel
 
-def starting_experiment(true_alpha, sample_size, monte_carlo_size, bootstrap_size, seed):
+def starting_experiment(true_alpha, sample_size, monte_carlo_size, bootstrap_size, seed, stan_model='bivariate-beta-model-v3.stan', prior_a=None, prior_kappa=None, prior_lambda=None, prior_mu=None, prior_sd=None):
     """
     Prepares the experiment file for the well-specified case, that is, the data comes from
     the Bivariate Beta distribution.
     """
     filename = '../../experiments/exp_' + '_'.join(str(e) for e in true_alpha) 
     filename += '_' + str(sample_size) + '_' + str(monte_carlo_size)
-    filename += '_' + str(bootstrap_size) + '_' + str(seed) + '.json'
+    filename += '_' + str(bootstrap_size) + '_' + str(seed)
+    
+    if stan_model != 'bivariate-beta-model-v3.stan':
+        filename += '_' + stan_model.split('.')[0]
+        if prior_a is not None:
+            filename += '_a' + ''.join(str(e) for e in prior_a)
+        if prior_kappa is not None:
+            filename += '_k' + str(prior_kappa)
+        if prior_lambda is not None:
+            filename += '_l' + str(round(prior_lambda, 3))
+        if prior_mu is not None:
+            filename += '_mu' + str(prior_mu)
+        if prior_sd is not None:
+            filename += '_sd' + str(prior_sd)
+            
+    filename += '.json'
     filename = os.path.join(ROOT_DIR, filename)
 
     if not os.path.exists(filename):
@@ -99,7 +114,7 @@ def saving_document_2(filename, bias, mse, mape):
     with open(filename, 'w') as outfile:
         json.dump(data, outfile)
 
-def experiment_bivbeta(true_alpha, sample_size, monte_carlo_size, bootstrap_size, seed, coverage=True):
+def experiment_bivbeta(true_alpha, sample_size, monte_carlo_size, bootstrap_size, seed, coverage=True, stan_model='bivariate-beta-model-v3.stan', prior_a=None, prior_kappa=None, prior_lambda=None, prior_mu=None, prior_sd=None):
     """
     It does the experiments from Section "Recovering parameters from bivariate beta".
     """
@@ -108,11 +123,23 @@ def experiment_bivbeta(true_alpha, sample_size, monte_carlo_size, bootstrap_size
     rng = np.random.default_rng(seed)
     distribution = BivariateBeta()
 
-    filename = starting_experiment(true_alpha, sample_size, monte_carlo_size, bootstrap_size, seed)
+    filename = starting_experiment(true_alpha, sample_size, monte_carlo_size, bootstrap_size, seed, stan_model, prior_a, prior_kappa, prior_lambda, prior_mu, prior_sd)
 
     # Stan setting
-    data = {'n': sample_size, 'a': np.ones(4), 'b': np.ones(4)}
-    stanfile = os.path.join(ROOT_DIR, '..', 'stan', 'bivariate-beta-model-v3.stan')
+    if prior_a is None:
+        prior_a = np.ones(4)
+        
+    data = {'n': sample_size, 'a': prior_a, 'b': np.ones(4)}
+    if prior_kappa is not None:
+        data['kappa'] = prior_kappa
+    if prior_lambda is not None:
+        data['lambda'] = prior_lambda
+    if prior_mu is not None:
+        data['s_mu'] = prior_mu
+    if prior_sd is not None:
+        data['s_sd'] = prior_sd
+
+    stanfile = os.path.join(ROOT_DIR, '..', 'stan', stan_model)
     model = CmdStanModel(stan_file=stanfile, cpp_options={'STAN_THREADS': True})
 
     for _ in trange(monte_carlo_size):
@@ -155,13 +182,14 @@ def experiment_bivbeta(true_alpha, sample_size, monte_carlo_size, bootstrap_size
         model_fit = model.sample(data=data, iter_warmup=2000, iter_sampling=2000, chains=4, adapt_delta=0.9, 
                                  show_progress=False, show_console=False)
         summary = model_fit.summary(percentiles=(2.5, 50, 97.5))
-        alpha_hat5 = summary['Mean'].iloc[1:5].values
-        alpha_hat6 = summary['50%'].iloc[1:5].values
+        alpha_keys = [f'alpha[{i}]' for i in range(1, 5)]
+        alpha_hat5 = summary.loc[alpha_keys, 'Mean'].values
+        alpha_hat6 = summary.loc[alpha_keys, '50%'].values
         time5 = time() - t0
         
         alpha = np.array([alpha_hat1, alpha_hat2, alpha_hat3, alpha_hat4, alpha_hat5, alpha_hat6])
-        lb = summary['2.5%'].iloc[1:5].values
-        ub = summary['97.5%'].iloc[1:5].values
+        lb = summary.loc[alpha_keys, '2.5%'].values
+        ub = summary.loc[alpha_keys, '97.5%'].values
         coverage_new[4,:] = (lb < true_alpha)*(ub > true_alpha)
 
         # Updating the estimates iteratively
@@ -210,8 +238,9 @@ def experiment_logitnormal(mu, sigma, sample_size, monte_carlo_size, seed):
         model_fit = model.sample(data=data, iter_warmup=2000, iter_sampling=2000, chains=4, adapt_delta=0.9, 
                                  show_progress=False, show_console=False)
         summary = model_fit.summary(percentiles=(2.5, 50, 97.5))
-        alpha_hat5 = summary['Mean'].iloc[1:5].values
-        alpha_hat6 = summary['50%'].iloc[1:5].values
+        alpha_keys = [f'alpha[{i}]' for i in range(1, 5)]
+        alpha_hat5 = summary.loc[alpha_keys, 'Mean'].values
+        alpha_hat6 = summary.loc[alpha_keys, '50%'].values
 
         est_moments1 = BivariateBeta(alpha=alpha_hat1).moments()
         est_moments2 = BivariateBeta(alpha=alpha_hat2).moments()
@@ -270,45 +299,72 @@ def simulated_based_calibration(a, b, c, n, L=63, N=1000, seed=831290):
     with open(os.path.join(folder, name), "w") as final:
         json.dump(rho_values, final)
 
+def simulated_based_calibration_lognormal(a, s_mu, s_sd, n, L=63, N=1000, seed=831290):
+
+    a = a*np.ones(4)
+
+    data = {'n': n, 'a': a, 's_mu': s_mu, 's_sd': s_sd}
+
+    rho_values = []
+    rng = np.random.RandomState(seed)
+
+    stanfile = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', 'stan', 'bivariate-beta-model-lognormal.stan'))
+    model = CmdStanModel(stan_file=stanfile, cpp_options={'STAN_THREADS': True})
+
+    for _ in trange(2*N):
+        # Data 
+        s = rng.lognormal(mean=np.log(s_mu), sigma=s_sd)
+        theta = rng.dirichlet(a)
+        true_alpha = s * theta
+        
+        U = rng.dirichlet(true_alpha, size=n)
+        if U[U<np.finfo(np.float64).eps].shape[0] > 0:
+            continue
+        X = U[:,0] + U[:,1]
+        Y = U[:,0] + U[:,2]
+        XY = np.column_stack([X,Y])
+        data['xy'] = XY
+
+        model_fit = model.sample(data=data, iter_warmup=1000, iter_sampling=1000, chains=1, adapt_delta=0.9,
+                                 show_progress=False, show_console=False)
+        alpha_estimates = (model_fit.stan_variables()['alpha'])[rng.choice(range(1000), size=L, replace=False)]
+        rho = np.sum(alpha_estimates > true_alpha, axis=0)
+        rho_values.append({'rho': rho.tolist(), 
+                           'diagnose': model_fit.diagnose(),
+                           'true_alpha': true_alpha.tolist(),
+                           'XY': XY.tolist(),
+                           'U': U.tolist()})
+
+    folder = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', '..', 'experiments', 'sbc'))
+    if not os.path.exists(folder):
+        os.mkdir(folder)
+    name = f"sbc_lognormal_a{a[0]}_mu{s_mu}_sd{s_sd}_{n}_{L}_{N}_{seed}.json"
+    with open(os.path.join(folder, name), "w") as final:
+        json.dump(rho_values, final)
+
 if __name__ == '__main__':
 
-    monte_carlo_size = 20
+    monte_carlo_size = 1000
     bootstrap_size = 500
     seed = 37812984
 
     #true_alpha = np.array([1,1,1,1])
-    #experiment_bivbeta(true_alpha, 50, monte_carlo_size, bootstrap_size, seed)
-    #experiment_bivbeta(true_alpha, 200, monte_carlo_size, bootstrap_size, seed)
+    #experiment_bivbeta(true_alpha, 50, monte_carlo_size, bootstrap_size, seed, stan_model='bivariate-beta-model-gamma.stan', prior_a=np.array([1, 1, 1, 1]), prior_kappa=4, prior_lambda=1)
+    #experiment_bivbeta(true_alpha, 200, monte_carlo_size, bootstrap_size, seed, stan_model='bivariate-beta-model-gamma.stan', prior_a=np.array([1, 1, 1, 1]), prior_kappa=4, prior_lambda=1)
 
     #true_alpha = np.array([3,1,1,3])
-    #experiment_bivbeta(true_alpha, 50, monte_carlo_size, bootstrap_size, seed)
+    #experiment_bivbeta(true_alpha, 50, monte_carlo_size, bootstrap_size, seed, stan_model='bivariate-beta-model-gamma.stan', prior_a=np.array([1, 1, 1, 1]), prior_kappa=4, prior_lambda=1)
     #experiment_bivbeta(true_alpha, 200, monte_carlo_size, bootstrap_size, seed)
-
-    #true_alpha = np.array([1,7.4,2.6,1])
-    #experiment_bivbeta(true_alpha, 50, monte_carlo_size, bootstrap_size, seed)
-    #experiment_bivbeta(true_alpha, 200, monte_carlo_size, bootstrap_size, seed)
-
-    #true_alpha = np.array([0.4,0.5,1.4,0.7])
-    #experiment_bivbeta(true_alpha, 50, monte_carlo_size, bootstrap_size, seed)
-    #experiment_bivbeta(true_alpha, 200, monte_carlo_size, bootstrap_size, seed)
-
-    monte_carlo_size = 1000
-
-    #true_alpha = np.array([1,1,1,1])
-    #experiment_bivbeta(true_alpha, 50, monte_carlo_size, bootstrap_size, seed)
-    #experiment_bivbeta(true_alpha, 200, monte_carlo_size, bootstrap_size, seed)
-
-    true_alpha = np.array([3,1,1,3])
-    #experiment_bivbeta(true_alpha, 50, monte_carlo_size, bootstrap_size, seed)
-    experiment_bivbeta(true_alpha, 200, monte_carlo_size, bootstrap_size, seed)
 
     true_alpha = np.array([1,7.4,2.6,1])
-    experiment_bivbeta(true_alpha, 50, monte_carlo_size, bootstrap_size, seed)
-    experiment_bivbeta(true_alpha, 200, monte_carlo_size, bootstrap_size, seed)
+    #experiment_bivbeta(true_alpha, 50, monte_carlo_size, bootstrap_size, seed)
+    monte_carlo_size = 274
+    experiment_bivbeta(true_alpha, 200, monte_carlo_size, bootstrap_size, seed, stan_model='bivariate-beta-model-gamma.stan', prior_a=np.array([1, 1, 1, 1]), prior_kappa=4, prior_lambda=1)
 
+    monte_carlo_size = 1000
     true_alpha = np.array([0.4,0.5,1.4,0.7])
-    experiment_bivbeta(true_alpha, 50, monte_carlo_size, bootstrap_size, seed)
-    experiment_bivbeta(true_alpha, 200, monte_carlo_size, bootstrap_size, seed)
+    experiment_bivbeta(true_alpha, 50, monte_carlo_size, bootstrap_size, seed, stan_model='bivariate-beta-model-gamma.stan', prior_a=np.array([1, 1, 1, 1]), prior_kappa=4, prior_lambda=1)
+    experiment_bivbeta(true_alpha, 200, monte_carlo_size, bootstrap_size, seed, stan_model='bivariate-beta-model-gamma.stan', prior_a=np.array([1, 1, 1, 1]), prior_kappa=4, prior_lambda=1)
 
     #n = 50
     #mu = np.array([0,0])
@@ -319,11 +375,33 @@ if __name__ == '__main__':
     #sigma = np.array([[2.25, -1.2], [-1.2, 1]])
     #experiment_logitnormal(mu, sigma, n, monte_carlo_size, seed)
 
-    # a = 1
+    # SBC experiments
+
+    #sbc_a = 1
     # b = 1
     # c = 0
-    # n = 50
-    # L = 63
-    # N = 1000
-    # seed = 831290
-    # simulated_based_calibration(a, b, c, n, L, N, seed)
+    #sbc_s_mu = 1
+    #sbc_s_sd = 0.5
+    #sbc_n = 50
+    #sbc_L = 63
+    #sbc_N = 1000
+    #sbc_seed = 831290
+    # simulated_based_calibration(sbc_a, b, c, sbc_n, sbc_L, sbc_N, sbc_seed)
+    #simulated_based_calibration_lognormal(sbc_a, sbc_s_mu, sbc_s_sd, sbc_n, sbc_L, sbc_N, sbc_seed)
+
+    # Settin (c), true_alpha = [1.0, 7.4, 2.6, 1.0], with varying priors
+    #monte_carlo_size_new = 1000
+    #test_alpha = np.array([1.0, 7.4, 2.6, 1.0])
+    #seed = 37812984
+      
+    # s ~ Gamma(4,1), \theta ~ Dirichlet(1,1,1,1) using bivariate-beta-model-gamma.stan 
+    #experiment_bivbeta(test_alpha, 50, monte_carlo_size_new, bootstrap_size, seed=seed, stan_model='bivariate-beta-model-gamma.stan', prior_a=np.array([1, 1, 1, 1]), prior_kappa=4, prior_lambda=1)
+
+    # s ~ Gamma(4,1/3), \theta ~ Dirichlet(1,1,1,1) using bivariate-beta-model-gamma.stan 
+    #experiment_bivbeta(test_alpha, 50, monte_carlo_size_new, bootstrap_size, seed=seed, stan_model='bivariate-beta-model-gamma.stan', prior_a=np.array([1, 1, 1, 1]), prior_kappa=4, prior_lambda=1/3)
+
+    # s ~ Gamma(10,5/6), \theta ~ Dirichlet(1,6,2,1) using bivariate-beta-model-gamma.stan 
+    #experiment_bivbeta(test_alpha, 50, monte_carlo_size_new, bootstrap_size, seed=seed, stan_model='bivariate-beta-model-gamma.stan', prior_a=np.array([1, 6, 2, 1]), prior_kappa=10, prior_lambda=5/6)
+
+    # s ~ Gamma(12,1), \theta ~ Dirichlet(1,7.4,2.6,1) using bivariate-beta-model-gamma.stan 
+    #experiment_bivbeta(test_alpha, 50, monte_carlo_size_new, bootstrap_size, seed=seed, stan_model='bivariate-beta-model-gamma.stan', prior_a=np.array([1, 7.4, 2.6, 1]), prior_kappa=12, prior_lambda=1)
