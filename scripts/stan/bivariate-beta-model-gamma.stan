@@ -15,6 +15,18 @@ functions {
       v += -n * log_multi_beta(alpha);
       return v;
    }
+   real log_bivariate_beta_obs_lpdf(vector xy, real u_raw,
+                                    vector alpha, real lb, real ub) {
+      real x = xy[1];
+      real y = xy[2];
+      real u = (ub - lb) * u_raw + lb;
+      real v = (alpha[1]-1) * log(fmax(u, 1e-12))
+             + (alpha[2]-1) * log(fmax(x-u, 1e-12))
+             + (alpha[3]-1) * log(fmax(y-u, 1e-12))
+             + (alpha[4]-1) * log1m(fmin(1-1e-12, x+y-u));
+      v += -log_multi_beta(alpha);
+      return v;
+   }
 }
 data {
    int<lower=0> n;
@@ -46,3 +58,16 @@ model {
    u_raw ~ uniform(0, 1);
    xy ~ log_bivariate_beta(alpha, u_raw, n, lb, ub);
 }
+generated quantities {
+  vector[n] log_lik;
+  for (i in 1:n) {
+    log_lik[i] = log_bivariate_beta_obs_lpdf(to_vector(xy[i]) | u_raw[i], alpha, lb[i], ub[i]);
+  }
+
+  matrix[n,2] xy_tilde;
+  for (j in 1:n) {
+    vector[4] u = dirichlet_rng(alpha);
+    xy_tilde[j,1] = u[1] + u[2];
+    xy_tilde[j,2] = u[1] + u[3];
+  }
+}

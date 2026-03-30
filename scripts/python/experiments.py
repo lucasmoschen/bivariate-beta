@@ -48,7 +48,14 @@ def starting_experiment(true_alpha, sample_size, monte_carlo_size, bootstrap_siz
 
     if not os.path.exists(filename):
         with open(filename, 'w') as outfile:
-            data = {'n_experiments': 0, 'bias': 0, 'mse': 0, 'mape': 0, 'comp': 0, 'coverage': 0}
+            data = {'n_experiments': 0, 
+                    'bias': 0, 'mse': 0, 'mape': 0, 
+                    'bias_moments': np.zeros((6, 5)).tolist(),
+                    'mse_moments': np.zeros((6, 5)).tolist(),
+                    'mape_moments': np.zeros((6, 5)).tolist(),
+                    'comp': np.zeros(5).tolist(),
+                    'coverage': np.zeros((5, 4)).tolist()
+                   }
             json.dump(data, outfile)
 
     return filename
@@ -69,7 +76,7 @@ def starting_experiment_2(mu, sigma, sample_size, monte_carlo_size, seed):
 
     return filename
 
-def saving_document_1(filename, bias, mse, mape, comp, coverage):
+def saving_document_1(filename, bias, mse, mape, comp, coverage, bias_moments, mse_moments, mape_moments):
     """
     Saves the information for each experiment in the well-specified case, that is, the data comes from
     the Bivariate Beta distribution.
@@ -81,6 +88,11 @@ def saving_document_1(filename, bias, mse, mape, comp, coverage):
     bias = (np.array(data['bias']) * N + bias)/(N + 1)
     mse = (np.array(data['mse']) * N + mse)/(N + 1)
     mape = (np.array(data['mape']) * N + mape)/(N + 1)
+    
+    bias_m = (np.array(data.get('bias_moments', 0)) * N + bias_moments)/(N + 1)
+    mse_m = (np.array(data.get('mse_moments', 0)) * N + mse_moments)/(N + 1)
+    mape_m = (np.array(data.get('mape_moments', 0)) * N + mape_moments)/(N + 1)
+    
     comp = (np.array(data['comp']) * N + comp)/(N + 1)
     coverage = (np.array(data['coverage']) * N + coverage)/(N + 1)
 
@@ -88,6 +100,9 @@ def saving_document_1(filename, bias, mse, mape, comp, coverage):
     data['bias'] = bias.tolist()
     data['mse'] = mse.tolist()
     data['mape'] = mape.tolist()
+    data['bias_moments'] = bias_m.tolist()
+    data['mse_moments'] = mse_m.tolist()
+    data['mape_moments'] = mape_m.tolist()
     data['comp'] = comp.tolist()
     data['coverage'] = coverage.tolist()
 
@@ -196,9 +211,38 @@ def experiment_bivbeta(true_alpha, sample_size, monte_carlo_size, bootstrap_size
         bias_new = alpha - true_alpha
         mse_new = bias_new * bias_new
         mape_new = abs(bias_new)/true_alpha
+        
+        # Moment-based metrics
+        true_moments = distribution.moments(true_alpha)
+        est_moments = [BivariateBeta(alpha=a).moments() for a in alpha[:4]]
+        alpha_samples = model_fit.stan_variables()['alpha']
+        
+        # Vectorized calculation of moments for all posterior samples
+        s = alpha_samples.sum(axis=1)
+        m1 = (alpha_samples[:,0] + alpha_samples[:,1]) / s
+        m2 = (alpha_samples[:,0] + alpha_samples[:,2]) / s
+        v1 = m1 * (alpha_samples[:,2] + alpha_samples[:,3]) / (s * (s+1))
+        v2 = m2 * (alpha_samples[:,1] + alpha_samples[:,3]) / (s * (s+1))
+        den = np.exp(-0.5 * (np.log(alpha_samples[:,0] + alpha_samples[:,1]) + 
+                             np.log(alpha_samples[:,2] + alpha_samples[:,3]) + 
+                             np.log(alpha_samples[:,0] + alpha_samples[:,2]) + 
+                             np.log(alpha_samples[:,1] + alpha_samples[:,3])))
+        cor = (alpha_samples[:,0] * alpha_samples[:,3] - alpha_samples[:,1] * alpha_samples[:,2]) * den
+        
+        moment_samples = np.column_stack([m1, m2, v1, v2, cor])
+        
+        est_moments.append(np.mean(moment_samples, axis=0))
+        est_moments.append(np.median(moment_samples, axis=0))
+        
+        est_moments = np.array(est_moments)
+        
+        bias_m = est_moments - true_moments
+        mse_m = bias_m * bias_m
+        mape_m = abs(bias_m) / np.maximum(abs(true_moments), 1e-10)
+
         comp_new = np.array([time1, time2, time3, time4, time5])
 
-        saving_document_1(filename, bias_new, mse_new, mape_new, comp_new, coverage_new)
+        saving_document_1(filename, bias_new, mse_new, mape_new, comp_new, coverage_new, bias_m, mse_m, mape_m)
 
 def moments_logit_normal(mu, sigma):
 
