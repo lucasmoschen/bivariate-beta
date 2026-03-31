@@ -70,4 +70,4 @@ generated quantities {
     xy_tilde[j,1] = u[1] + u[2];
     xy_tilde[j,2] = u[1] + u[3];
   }
-}
+}
