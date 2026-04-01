@@ -1,0 +1,3 @@
+case_id,csv_path,json_path,n_models
+caseA,/Users/lmm122/Documents/github/bivariate-beta/experiments/energy_gof/caseA_energy_gof_M5000_B999.csv,/Users/lmm122/Documents/github/bivariate-beta/experiments/energy_gof/caseA_energy_gof_M5000_B999.json,6
+caseB,/Users/lmm122/Documents/github/bivariate-beta/experiments/energy_gof/caseB_energy_gof_M5000_B999.csv,/Users/lmm122/Documents/github/bivariate-beta/experiments/energy_gof/caseB_energy_gof_M5000_B999.json,7

@@ -1,0 +1,24 @@
+{
+  "bayes_point_estimate": "mean",
+  "case_id": "caseB",
+  "case_label": "Case B: ANVISA COVID-19 diagnostic tests",
+  "dataset_metadata": {
+    "eps_max": 0.0005,
+    "jitter_seed": 13,
+    "n_x_eq_1_jittered": 21,
+    "n_y_eq_1_jittered": 21
+  },
+  "energy_variant": "v",
+  "models": [
+    "beta_bayes_mean",
+    "beta_bayes_median",
+    "ind_beta_mle",
+    "bln_bayes",
+    "mom_closed",
+    "mom_nls",
+    "mle"
+  ],
+  "permutations": 9999,
+  "reference_size": 10000,
+  "seed": 20260331
+}

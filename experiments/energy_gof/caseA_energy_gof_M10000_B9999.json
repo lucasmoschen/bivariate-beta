@@ -1,0 +1,23 @@
+{
+  "bayes_point_estimate": "mean",
+  "case_id": "caseA",
+  "case_label": "Case A: share of immunized children",
+  "dataset_metadata": {
+    "jitter_seed": 13,
+    "n_ties_jittered": 28,
+    "tie_epsilon": 1e-06,
+    "year": 2024
+  },
+  "energy_variant": "v",
+  "models": [
+    "beta_bayes_mean",
+    "beta_bayes_median",
+    "bln_bayes",
+    "mom_closed",
+    "mom_nls",
+    "mle"
+  ],
+  "permutations": 9999,
+  "reference_size": 10000,
+  "seed": 20260331
+}

@@ -12,7 +12,10 @@ environment you are running.
 """
 import numpy as np
 from scipy.special import gamma, loggamma, digamma, beta, hyp2f1, logsumexp
-from mpmath import appellf1
+try:
+    from mpmath import appellf1
+except ImportError:
+    appellf1 = None
 from scipy.integrate import quad
 from scipy.optimize import minimize, root, linear_sum_assignment
 from scipy.stats import norm
@@ -97,6 +100,8 @@ class BivariateBeta:
         | result (float): density of bivariate beta distribution at (x,y)
         """
         if x <= 0 or x >= 1 or y <= 0 or y >= 1: return 0.0
+        if appellf1 is None:
+            raise ImportError("mpmath is required for pdf_appell but is not installed.")
         alpha1, alpha2, alpha3, alpha4 = tuple(self.alpha)
 
         # supposition of continuity
