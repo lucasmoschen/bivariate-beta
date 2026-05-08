@@ -157,7 +157,8 @@ def experiment_bivbeta(true_alpha, sample_size, monte_carlo_size, bootstrap_size
     stanfile = os.path.join(ROOT_DIR, '..', 'stan', stan_model)
     model = CmdStanModel(stan_file=stanfile, cpp_options={'STAN_THREADS': True})
 
-    for _ in trange(monte_carlo_size):
+    runs_left = monte_carlo_size - json.load(open(filename, 'r')).get('n_experiments', 0)
+    for _ in trange(runs_left):
         U = rng.dirichlet(true_alpha, size=sample_size)
         X = U[:, 0] + U[:, 1]
         Y = U[:, 0] + U[:, 2]
@@ -390,25 +391,28 @@ if __name__ == '__main__':
 
     monte_carlo_size = 1000
     bootstrap_size = 500
-    seed = 37812984
+    seed = 7382197219
 
-    #true_alpha = np.array([1,1,1,1])
+    true_alpha = np.array([1,1,1,1])
     #experiment_bivbeta(true_alpha, 50, monte_carlo_size, bootstrap_size, seed, stan_model='bivariate-beta-model-gamma.stan', prior_a=np.array([1, 1, 1, 1]), prior_kappa=4, prior_lambda=1)
     #experiment_bivbeta(true_alpha, 200, monte_carlo_size, bootstrap_size, seed, stan_model='bivariate-beta-model-gamma.stan', prior_a=np.array([1, 1, 1, 1]), prior_kappa=4, prior_lambda=1)
 
-    #true_alpha = np.array([3,1,1,3])
+    true_alpha = np.array([3,1,1,3])
     #experiment_bivbeta(true_alpha, 50, monte_carlo_size, bootstrap_size, seed, stan_model='bivariate-beta-model-gamma.stan', prior_a=np.array([1, 1, 1, 1]), prior_kappa=4, prior_lambda=1)
-    #experiment_bivbeta(true_alpha, 200, monte_carlo_size, bootstrap_size, seed)
+    #experiment_bivbeta(true_alpha, 200, monte_carlo_size, bootstrap_size, seed, stan_model='bivariate-beta-model-gamma.stan', prior_a=np.array([1, 1, 1, 1]), prior_kappa=4, prior_lambda=1)
 
     true_alpha = np.array([1,7.4,2.6,1])
-    #experiment_bivbeta(true_alpha, 50, monte_carlo_size, bootstrap_size, seed)
-    monte_carlo_size = 274
+    #experiment_bivbeta(true_alpha, 50, monte_carlo_size, bootstrap_size, seed, stan_model='bivariate-beta-model-gamma.stan', prior_a=np.array([1, 1, 1, 1]), prior_kappa=4, prior_lambda=1)
     experiment_bivbeta(true_alpha, 200, monte_carlo_size, bootstrap_size, seed, stan_model='bivariate-beta-model-gamma.stan', prior_a=np.array([1, 1, 1, 1]), prior_kappa=4, prior_lambda=1)
 
-    monte_carlo_size = 1000
     true_alpha = np.array([0.4,0.5,1.4,0.7])
-    experiment_bivbeta(true_alpha, 50, monte_carlo_size, bootstrap_size, seed, stan_model='bivariate-beta-model-gamma.stan', prior_a=np.array([1, 1, 1, 1]), prior_kappa=4, prior_lambda=1)
+    #experiment_bivbeta(true_alpha, 50, monte_carlo_size, bootstrap_size, seed, stan_model='bivariate-beta-model-gamma.stan', prior_a=np.array([1, 1, 1, 1]), prior_kappa=4, prior_lambda=1)
     experiment_bivbeta(true_alpha, 200, monte_carlo_size, bootstrap_size, seed, stan_model='bivariate-beta-model-gamma.stan', prior_a=np.array([1, 1, 1, 1]), prior_kappa=4, prior_lambda=1)
+
+    true_alpha = np.array([19,1,1,19])
+    #experiment_bivbeta(true_alpha, 50, monte_carlo_size, bootstrap_size, seed, stan_model='bivariate-beta-model-gamma.stan', prior_a=np.array([1, 1, 1, 1]), prior_kappa=4, prior_lambda=1)
+    experiment_bivbeta(true_alpha, 200, monte_carlo_size, bootstrap_size, seed, stan_model='bivariate-beta-model-gamma.stan', prior_a=np.array([1, 1, 1, 1]), prior_kappa=4, prior_lambda=1)
+
 
     #n = 50
     #mu = np.array([0,0])
